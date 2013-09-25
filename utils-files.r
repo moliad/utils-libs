@@ -308,8 +308,6 @@ slim/register [
             ]
         ]
         
-        ?? rootpath
-        ?? path
         dirpath: clean-path append copy rootpath path
         
         unless find i-blk path [

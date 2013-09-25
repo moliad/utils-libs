@@ -2,8 +2,8 @@ REBOL [
     ; -- Core Header attributes --
     title: "file and path related utility functions"
     file: %utils-files.r
-    version: 1.0.2
-    date: 2013-9-12
+    version: 1.0.3
+    date: 2013-09-25
     author: "Maxim Olivier-Adlhoch"
     purpose: {Collection of generic, re-useable path and file handling functions.}
     web: http://www.revault.org/modules/utils-files.rmrk
@@ -47,6 +47,12 @@ REBOL [
 
         v1.0.2 - 2013-09-12
             -license changed to Apache v2
+            
+        v1.0.3 - 2013-09-25
+        	-fixed DIR-TREE 
+        		*/ABSOLUTE now also works for folder paths,  
+        		*/IGNORE block now works on root-relative paths, 
+        		*fixed typo which crashed functions
 }
     ;-  \ history
 
@@ -280,13 +286,13 @@ slim/register [
         path [file!]
         /root rootpath [file! none!]
         /absolute "returns absolute paths"
-        /ignore i-blk [block! file!]"if the path is within the ignore path, we reply an empty block, must be absolute path, or else is ignored."
+        /ignore i-blk [block! file!] "if the path is within the ignore paths block, we reply an empty block, paths must be given as a complete path including %./ or else is ignored."
         ;/local list item data subpath dirpath rval
     ][
         rval: copy []
         
         i-blk: any [i-blk []]
-        i-blk: compose [(iblk)]
+        i-blk: compose [(i-blk)]
         
         
         either root [
@@ -302,15 +308,22 @@ slim/register [
             ]
         ]
         
+        ?? rootpath
+        ?? path
         dirpath: clean-path append copy rootpath path
         
-        unless find i-blk dirpath [
+        unless find i-blk path [
             either is-dir? dirpath [
                 ; list directory content
                 list: read dirpath
                 
                 ; append that path to the file list
-                append rval path
+                either absolute [
+                	append rval clean-path join rootpath path
+                ][
+                	append rval path
+                ]
+                ;append rval path
                 
                 foreach item list [
                     subpath: join path item

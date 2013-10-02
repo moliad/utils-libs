@@ -53,6 +53,8 @@ REBOL [
         		*/ABSOLUTE now also works for folder paths,  
         		*/IGNORE block now works on root-relative paths, 
         		*fixed typo which crashed functions
+        v1.0.4 - 2013-10-02
+        	-changed 'DIR-PART  to  'DIRECTORY-OF
 }
     ;-  \ history
 
@@ -158,9 +160,9 @@ slim/register [
 
     
     ;-----------------
-    ;-     dir-part()
+    ;-     directory-of()
     ;-----------------
-    dir-part: funcl [
+    directory-of: dir-part: funcl [
         path [file!]
     ][
         if file: find/tail/last path "/" [
@@ -168,6 +170,7 @@ slim/register [
         ]
         dir
     ]
+
     
     
     ;--------------------------
@@ -277,6 +280,16 @@ slim/register [
             path: find/last/tail path "/"
             tail? path
         ]
+    ]
+    
+
+    ;-------------------
+    ;-     is-file?()
+    ;-----
+    is-file?: func [
+        path [string! file!]
+    ][
+        not is-dir? path
     ]
     
     ;-----------------

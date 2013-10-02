@@ -523,6 +523,124 @@ slim/register [
 		; if an error occurs, we return none
 		backup
 	]
+	
+	
+	;--------------------
+	;-     merge()
+	;--------------------
+	at*: :at
+	skip*: :skip
+	merge: funcl [
+		container "series to insert into" [series!]
+		data "data to insert within, single value or series, a single value will be repeated as needed to reach end of container."
+		/between "Do not add item at end, only in-between container items."
+		/zero "insert data before first element of container"
+		/skip step [integer!] "skip container records when merging" 
+		/every n [integer!]   "view the data as fixed-sized records, first being always inserted. (ex: 2= 1 3 5 7)"
+		/amount a [integer!]  "insert this many elements from data at a time, if every is specified, this amount cannot be larger than it."
+		/at ata [integer! none!] "start merge at this offset within container, use none value to follow skip size"
+		/only "treat series data as single values (repeating the series in container till the end).  Note that data is not copied."
+		;/local repeat
+	][
+		; usefull copy to end use of merge
+		if any [
+			not series? data
+			only
+		][data: head insert tail copy [] data repeat: true]
+		
+		either skip [step: step + 1][step: 1]
+		unless every [n: 1]
+		unless amount [a: 1]
+		unless zero [container: at* container 2]
+		if at [
+			if none? ata [ata: step]
+			container: skip* container ata
+		]
+		
+		; change amount functionality based on if every is specified.
+		if every [
+			either n >= a [n: n - a + 1][to-error "merge: amount cannot be larger than every"]
+		]
+		
+		until [
+			loop a [unless tail? data [
+					container: insert/only container first data
+					unless repeat [
+						data: at* data 2 ; skip to next item in data
+					]
+			]]
+			
+			;stop merging past container
+			if tail? container [
+				data: tail data
+			]
+
+			container: at* container step + 1
+			unless repeat [
+				data: at* data n
+			]
+
+			any [
+				tail? data
+				all [
+					between 
+					tail? at* container step
+				]
+			]
+		]
+		first reduce [ head container container: none data: none ]
+	]
+	
+	
+	;--------------------
+	;-     separate()
+	;--------------------
+	SEPARATE: func [
+	    "separates the serie into a serie of the same type using a specified separator and many flexible options"
+	    serie [series!] "series you wish to separate"
+	    separator "if this is a series, it cycles each item at each separation."
+	    /only "if separator is a series, insert it as-is at each separation."
+	    /skip skip-count
+	    /at offset "note, use 0 to insert at head of (before) series!"
+	    /local here
+	][
+	   
+	    skip-count: (any [skip-count 1]) - 1 + either only[length? separator] [1]
+	    if at [
+	        serie: system/words/at serie offset
+	        ; add an item in serie so algorythm adds something after it, instead of after first char
+	        if offset = 0 [
+	            serie: head insert serie "#"
+	        ]
+	    ]
+	    parse/all serie [any [
+	        here: skip
+	        (
+	            unless empty? next here [
+	                either all [ series? separator not only] [
+	                    insert next here  any [
+	                        ; cycle through separator
+	                        all [not empty? separator first separator ]
+	                        first separator: head separator
+	                    ]
+	                    separator: system/words/skip separator 1 ; error free way to go to next item
+	                ][
+	                    insert next here separator
+	                ]
+	            ]
+	        ) skip-count skip ]
+	    ]
+	
+	    if offset = 0 [
+	        ; remove the first item of series, which we added
+	        remove serie
+	    ]
+	
+	    head serie
+	]
+
+	
+	
 ]
 
 

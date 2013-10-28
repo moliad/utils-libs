@@ -2,8 +2,8 @@ REBOL [
 	; -- Core Header attributes --
 	title: "Generic block! handling functions"
 	file: %utils-blocks.r
-	version: 1.0.1
-	date: 2013-9-10
+	version: 1.0.2
+	date: 2013-10-8
 	author: "Maxim Olivier-Adlhoch"
 	purpose: {Collection of generic, re-useable functions for handling block! values.}
 	web: http://www.revault.org/modules/utils-blocks.rmrk
@@ -35,16 +35,21 @@ REBOL [
 
 	;-  / history
 	history: {
-		2013-9-10 - v1.0.1
+		v1.0.1 - 2013-9-10
 			-creation of history
 			-license changed to Apache v2
-	}
+	
+
+		v1.0.2 - 2013-10-08
+			-Added 'POP function and a few unit tests for it.
+}
 	;-  \ history
 
 	;-  / documentation
 	documentation: ""
 	;-  \ documentation
 ]
+
 
 
 
@@ -154,6 +159,44 @@ slim/register [
 		]
 	]
 
+
+	
+	;--------------------------
+	;-     pop()
+	;--------------------------
+	; purpose:  removes the last item from a block, returning it
+	;
+	; inputs:   stack in block format
+	;
+	; returns:  none when list is empty.
+	;
+	; notes:    - none transparent
+	;           - WILL NOT attempt to go back on a given block which is given at its tails but contains items preceding it.
+	;
+	; tests:    
+	;
+	;    test-group [ stack  utils-blocks.r  block! ]
+	;		[ all [ r: pop   b: [1 2 3]   r = 3   b = [ 1 2 ]  ] ]
+	;		[ all [ none? pop  tail b: [ 1 2 3 ]  b = [1 2 3]  ] ]
+	;		[ none = pop [] ]
+	;		[ none = pop none ]
+	;	end-group
+	;		
+	;--------------------------
+	pop: funcl [
+		stack [block! none!]
+	][
+		all [
+			stack
+			not empty? stack
+			first reduce [
+				last stack 
+				remove back tail stack 
+				stack: none
+			]
+		]
+	]
+	
 			
 ]
 

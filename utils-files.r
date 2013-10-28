@@ -473,6 +473,10 @@ slim/register [
 			v?? dest
 			vprobe info? src
 			vprobe info? dest
+			unless exists? src [
+				probe clean-path src
+				to-error "'NEWER? :: source file doesn't exist (yet?)"
+			]
 			all [
 				; new file
 				exists? dest
@@ -494,6 +498,7 @@ slim/register [
 			paths: none
 		]   
 	]
+	
 	
 	
 	

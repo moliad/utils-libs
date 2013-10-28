@@ -58,17 +58,42 @@ rebol [
 ;--------------------------------------
 
 
-slim/register [
+slim/register [                                                                                                               
 	;-----------------
 	;-     swap-values()
 	;
 	; given two words, it will swap the values these words reference or contain.
+	;
+	;    test [swap-values word! any-word! utils-word.r ] [ a: 1  b: 2  swap-values a b  all [a = 2  b = 1]]
 	;-----------------
-	swap-values: func [
-		'a 'b 
-		/local c
+	swap-values: funcl [
+		'a [ word! ]
+		'b [ word! ]
 	][c: get a set a get b set b  c]
 
+
+
+	;--------------------------
+	;- as-lit-word()
+	;--------------------------
+	; purpose:  converts any word to a lit-word type even some which are notoriously hard to manage like '< or '>
+	;
+	; inputs:   a word to convert
+	;
+	; returns:  a lit-word!
+	;
+	; notes:    function code suggested by Ladislav Mecir on Altme' Rebol discussion forum
+	;
+	; tests:    
+	;	test-group [as-lit-word word! any-word! utils-word.r][]
+	;   	["'>" = mold as-lit-word > ]
+	;   	["'<" = mold as-lit-word < ]
+	;   	["'<=" = mold as-lit-word <= ]
+	;   	["'haha" = mold as-lit-word haha: ]
+	;   end-group
+	;--------------------------
+	as-lit-word: funcl ['word [any-word!]] [to lit-word! word]
+	
 
 ]
 

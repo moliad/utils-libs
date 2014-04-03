@@ -162,6 +162,78 @@ slim/register [
 
 	
 	;--------------------------
+	;-         replace-deep()
+	;--------------------------
+	; purpose:  given a tree of blocks finds a value and replaces it with another.
+	;
+	; inputs:   
+	;
+	; returns:  none if the search isn't found, the replaced value at block when it is found.
+	;
+	; notes:    
+	;
+	; tests:    
+	;--------------------------
+	replace-deep: funcl [
+		block [ block! ]
+		search-value 
+		replace-value 
+	][
+		;vin "replace-deep()"
+		rval: none
+		done?: false
+		stack: clear []
+		
+		while [
+			all [
+				block
+				not done?
+		 	] 
+		 ][
+		 	;vprint "================"
+		 	;v?? block
+		 	
+		 	sblk: find block search-value
+		 	bblk: find block block!
+		 	
+			any [
+			
+				all [
+					sblk 
+					any [
+						not bblk
+						(index? sblk) < (index? bblk)
+					]
+					
+					change/only sblk replace-value
+					rval: sblk
+					done?: true
+				]
+				
+				
+				if bblk [
+					append stack next bblk
+					block: first bblk
+				]
+				
+				
+				unless empty? stack [
+					block: last stack
+					remove back tail stack
+					block
+				]
+				
+				block: none
+			]
+		]
+		
+		;vout
+		rval
+	]
+
+
+	
+	;--------------------------
 	;-     pop()
 	;--------------------------
 	; purpose:  removes the last item from a block, returning it

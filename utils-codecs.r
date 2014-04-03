@@ -59,6 +59,19 @@ REBOL [
 slim/register [
 
 	
+	
+	;-                                                                                                       .
+	;-----------------------------------------------------------------------------------------------------------
+	;
+	;-     GLOBALS
+	;
+	;-----------------------------------------------------------------------------------------------------------
+	platform-little-endian: found? find  [ win32 linux OSX ] probe platform-name
+	platform-big-endian:    not platform-little-endian
+	
+	?? platform-little-endian
+	?? platform-big-endian
+	
 	;-                                                                                                         .
 	;-----------------------------------------------------------------------------------------------------------
 	;- 
@@ -151,8 +164,6 @@ slim/register [
 		]
 	]
 
-
-
 	;--------------------------
 	;-     i32-to-binary()
 	;--------------------------
@@ -166,12 +177,26 @@ slim/register [
 	;
 	; tests:    
 	;--------------------------
-	i32-to-binary: func [
+	i32-to-binary: funcl [
 		n [integer!] 
-		/rev
+		/network "return binary in network byte order"
+		/big-endian
+		/little-endian
 	][
 		n: load join "#{" [form to-hex to-integer n "}"]
-		either rev [head reverse n][n]
+		
+		;-----
+		; by default we return the platform
+		any [
+			all [
+				any [network big-endian platform-big-endian ]
+				n 
+			]
+			all [
+				any [little-endian platform-little-endian ]
+				head reverse n 
+			]
+		]
 	]
 	
 
@@ -193,8 +218,46 @@ slim/register [
 		data [string! binary!]
 		/rev
 	][
-		
-		n: to-integer to-binary either rev [ head reverse data ][ data ]
+		n: to-integer as-binary either rev [ head reverse copy/part data 4 ][ data ]
+	]
+
+	;--------------------------
+	;-     load-le-i32()
+	;--------------------------
+	; purpose:  
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    the same as load-i32, but expects a little-endian input binary 
+	;
+	; tests:    
+	;--------------------------
+	load-le-i32: funcl [
+		data [string! binary!]
+	][
+		n: to-integer as-binary head reverse copy/part data 4 
+	]
+
+
+	;--------------------------
+	;-     load-be-i32()
+	;--------------------------
+	; purpose:  
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    the same as load-i32, but expects a little-endian input binary 
+	;
+	; tests:    
+	;--------------------------
+	load-be-i32: funcl [
+		data [string! binary!]
+	][
+		n: to-integer as-binary data
 	]
 
 	

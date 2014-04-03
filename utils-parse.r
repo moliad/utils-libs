@@ -40,7 +40,7 @@ REBOL [
     
         v1.0.0 - 2013-09-12
             -license changed to Apache v2
-}
+	}
     ;-  \ history
 
     ;-  / documentation
@@ -64,22 +64,27 @@ slim/register [
 
 
     ;-   generic core parse rules
-    core-rules: [
+    ;core-rules: context [
+    
         =digit=: charset "0123456789"
         =alpha=: charset [#"a" - #"z" #"A" - #"Z"]
         =digits=: [some =digit=]
         =newline=: [ crlf | newline ]
+        
+		=space=: charset " ^-"
+		=spaces=: [ SOME =space= ]
         =whitespace=: charset " ^-^/"
-        =whitespaces=: [any =whitespace=] ; optional space (often after newline or between known delimiter)
-        =spacing=: [some =whitespace=]    ; required space
+        =whitespaces=: [some =whitespace=] ; optional space (often after newline or between known delimiter)
         
         =colon=: charset ":"
-        =api-lbl-char=: union (union =alpha= =digit=) charset "-_"
-        
-        =api-lbl=: [=alpha= any =api-lbl-char=]
+        =lbl-char=: union (union =alpha= =digit=) charset "-_"
+        =lbl=: [=alpha= any =api-lbl-char=]
+
+		=comment=: [";" [ [to "^/"] | [ to end]]]
+
+
     
-    
-    ]
+    ;]
     
     
     
@@ -89,7 +94,6 @@ slim/register [
     ;-    parse-flow control
     ;
     ;------------------------------------------------------------------------------
-    
     !fail-rule!: [to end skip]
     ?head?: 
     
@@ -138,7 +142,7 @@ slim/register [
         rule [block!]
     ][
         vin "bind-rules()"
-        bind rule core-rules
+        bind rule self
         vout
         
         rule

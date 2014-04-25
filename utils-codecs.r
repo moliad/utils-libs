@@ -59,7 +59,6 @@ REBOL [
 slim/register [
 
 	
-	
 	;-                                                                                                       .
 	;-----------------------------------------------------------------------------------------------------------
 	;
@@ -71,6 +70,10 @@ slim/register [
 	
 	?? platform-little-endian
 	?? platform-big-endian
+	
+	
+	; used for fast integer convertion (outputs small endian values on intel cpus)
+	ui32-struct: make struct! [value [integer!]] [0]
 	
 	;-                                                                                                         .
 	;-----------------------------------------------------------------------------------------------------------
@@ -237,7 +240,7 @@ slim/register [
 	load-le-i32: funcl [
 		data [string! binary!]
 	][
-		n: to-integer as-binary head reverse copy/part data 4 
+		to-integer as-binary head reverse copy/part data 4 
 	]
 
 
@@ -260,6 +263,14 @@ slim/register [
 		n: to-integer as-binary data
 	]
 
+
+
+	;--------------------------
+	;-     int-to-ui32-be-binary()
+	;--------------------------
+	int-to-ui32-be-binary: func[i][
+		ui32-struct/value: i copy third ui32-struct
+	]
 	
 ]
 

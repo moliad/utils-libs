@@ -233,6 +233,46 @@ slim/register [
 		; we return none if browse isn't successful
 		result
 	]
+
+
+
+	;--------------------------
+	;-     at-each()
+	;--------------------------
+	; purpose:  
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    
+	;
+	; tests:    
+	;       test-group [ at-each  flow  utils-flow.r ] []
+	;           [ total: 0  ( 10 = at-each blk [1 2 3 4] [ total: total + first blk ]  ) ]
+	;       end-group
+	;--------------------------
+	at-each: func [
+	    'word
+	    series
+	    code
+	    /local ctx rval
+	][
+	    ctx: context reduce [to-set-word word #[none]]
+	    code: bind/copy code ctx
+	    while [not tail? series] [
+	        set in ctx word series
+	        rval: do code
+	        series: next series
+	    ]
+	    rval
+	]
+
+
+
+
+
+
 	
 			
 ]

@@ -85,6 +85,8 @@ REBOL [
 
 slim/register [
 
+	
+
 	;-                                                                                                         .
 	;-----------------------------------------------------------------------------------------------------------
 	;- 
@@ -168,11 +170,14 @@ slim/register [
 		dir-part: 
 	;-----------------
 	directory-of: funcl [
-		path [file! none!]
+		path [file! string! none!]
 	][
 		all [
 			path
-			file: find/tail/last path "/"
+			any [
+				file: find/tail/last path "\"
+				file: find/tail/last path "/"
+			]
 			copy/part path file
 		]
 	]
@@ -199,6 +204,7 @@ slim/register [
 	;		[ %file      = filename-of %/root/path/file ]
 	;		[ %root      = filename-of %/root ]
 	;		[ none       = filename-of %./ ]
+	;		[ %.         = filename-of %/. ]
 	;		[ %file.ext  = filename-of %./file.ext ]
 	;		[ %file.ext  = filename-of %file.ext ]
 	;		[ %.ext      = filename-of %.ext ]
@@ -210,12 +216,13 @@ slim/register [
 		file-part:
 	;--------------------------
 	filename-of: funcl [
-		path [file! none!]
+		path [file! string! none!]
 	][
 		all [
 			path
 			file: any [
 				find/tail/last path "/"
+				find/tail/last path "\"
 				path
 			]
 			not empty? file
@@ -256,7 +263,7 @@ slim/register [
 		ext-part: 
 	;--------------------------
 	extension-of: funcl [
-		path [file! none!]
+		path [string! file! none!]
 	][
 		all [
 			path
@@ -501,7 +508,471 @@ slim/register [
 	
 	
 	
+	;--------------------------
+	;-     root?()
+	;--------------------------
+	; purpose:  is the given path a root path?
+	;
+	; inputs:   any file path
+	;
+	; returns:  
+	;
+	; notes:    
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	root?: funcl [
+		path [file!]
+	][
+		path = %/
+	]
 	
+	
+	;--------------------------
+	;-     itemize-path()
+	;--------------------------
+	; purpose:  given a path, separates into each of its part.
+	;
+	; inputs:   any file path
+	;
+	; returns:  a block of strings with 
+	;
+	; notes:    -a trailing or begining slash will be inserted in the result if it was
+	;            a root path and/or a directory path.
+	;
+	;           -for the sake of simplicity, head and trailing slashes are also strings.
+	;
+	; tests:    
+	;	test-group [file! itemize-path utils-files.r] []
+	;		[        [ "/" "root" "dir" "/" ] = itemize-path  %/root/dir/ ]
+	;		[            [ "root" "dir" "/" ] = itemize-path  %root/dir/ ]
+	;		[               [ "root" "dir"  ] = itemize-path  %root/dir ]
+	;		[ [ "/" "root" "dir" "file.ext" ] = itemize-path  %/root/dir/file.ext ]
+	;		[     [ "root" "dir" "file.ext" ] = itemize-path  %root/dir/file.ext ]
+	;		[                         [ "/" ] = itemize-path  %/ ]
+	;		[                  [ "/" "." "/"] = itemize-path  %/./ ]
+	;		[                 [ "/" ".." "/"] = itemize-path  %/../ ]
+	;		[                      [ "." "/"] = itemize-path  %./ ]
+	;		[                     [ ".." "/"] = itemize-path  %../ ]
+	;		[                      error? try [ itemize-path "test" ]]
+	;	end-group
+	;--------------------------
+	itemize-path: func [
+		path [file!]
+		/local dir? abs?
+	][
+		dir?: is-dir? path
+		abs?: absolute-path?/quiet path
+		path: parse/all path "/"
+		
+		remove-each item path [item = ""]
+		
+		all [
+			dir? 
+			path <> []
+			append path "/"
+		]
+		if abs? [insert path "/" ]
+		
+		path  
+	]
+	
+	
+	;--------------------------
+	;-     absolute-path?()
+	;--------------------------
+	; purpose:  quick check to see if a path is relative or aboslute
+	;
+	; inputs:   any file path
+	;
+	; returns:  the input path if true, none! otherwise
+	;
+	; tests:    
+	;	test-group [file! absolute-path? utils-files.r] []
+	;		[ absolute-path?  %/root/path/ ]
+	;		[ absolute-path?  %/root/path/file.ext ]
+	;		[ absolute-path? %/ ]
+	;		[ none? absolute-path? %./ ]
+	;		[ none? absolute-path? %rel/path/file.ext ]
+	;		[ error? try [ absolute-path? "test" ]]
+	;		[ error? try [ absolute-path? %/../invalid/path ] ]
+	;	end-group
+	;--------------------------
+	absolute-path?: funcl [
+		[catch]
+		path [file!]
+		/quiet "do not raise error if given invalid %/../  path"
+	][
+		all [ 
+			#"/" = first path
+			
+			; root paths cannot start with  "/../"
+			not all [
+				not quiet
+				#"." = pick path 3
+				#"." = pick path 2
+				throw make error! "invalid path given to absolute-path?()"
+			]
+			path 
+		]
+	]
+
+	
+	
+	;--------------------------
+	;-     volume?()
+	;--------------------------
+	; purpose:  detect if a path is a disk volume (logical system partition)
+	;
+	; inputs:   any file path 
+	;
+	; returns:  the input path if true, none! otherwise
+	;
+	; notes:    -each platform may have different ways to determine if a path is a volume.
+	;           -volume paths are special, we cannot create volumes, they usually act like 'named' root paths.
+	;
+	;           -some OSes don't really have the concept of volumes, as they are symlinked within the rest of the
+	;            filesystem.  if your OS is like so but you have a way of telling if it really is a volume, then
+	;            you may extend the function here.
+	;
+	;           -only absolute paths may be considered volumes.
+	;
+	;           -on posix filesystems we fake it by assuming apps shouldn't manipulate paths in the root.
+	;            so we also assume volumes are single-depth paths directly in the root.
+	;
+	; tests:    
+	;	test-group [file! volume? utils-files.r] []
+	;		[              volume?  %/c/ ]
+	;		[              volume?  %/c ]
+	;		[              volume?  %/volume/ ]
+	;		[        none? volume?  %c/ ]
+	;		[        none? volume?  %volume/ ]
+	;		[        none? volume?  %/root/path/file.ext ]
+	;		[        none? volume?  %/ ]
+	;		[        none? volume?  %./ ]
+	;		[        none? volume?  %/. ]
+	;		[        none? volume?  %/./ ]
+	;		[        none? volume?  %/../ ]
+	;		[        none? volume?  %rel/path/file.ext ]
+	;		[ error? try [ volume?  "test" ]]
+	;	end-group
+	;--------------------------
+	volume?: funcl [
+		path [file!]
+	][
+		all [
+			paths: itemize-path path
+			paths/1 = "/"
+			string? paths/2
+			paths/2 <> "."
+			paths/2 <> ".."
+			any [
+				paths/3 = "/"
+				none? paths/3
+			]
+			none? paths/4
+			path
+		]
+	]
+	
+	
+	
+	;--------------------------
+	;-     fileize()
+	;--------------------------
+	; purpose:  the logical complement to dirize
+	;
+	; inputs:   a path, from which we remove the trailing /
+	;
+	; returns:  a COPY of the input path. 
+	;
+	; notes:    -cannot use this on a root path, it raises an error.
+	;
+	;           -always returns a copy of the original path, just like 'DIRIZE
+	;
+	; tests:    
+	;	test-group [file! fileize utils-files.r] []
+	;		[ %/root/path      = fileize %/root/path/ ]
+	;		[ %/root/path/file = fileize %/root/path/file ]
+	;		[ %/root           = fileize %/root ]
+	;		[ %.               = fileize %./ ]
+	;		[ %/.              = fileize %/. ]
+	;		[ %..              = fileize %../ ]
+	;		[ %/..             = fileize %/.. ]
+	;		[ %./file.ext      = fileize %./file.ext ]
+	;		[ %file.ext        = fileize %file.ext ]
+	;		[ error?       try [ fileize none ]]
+	;		[ error?       try [ fileize "test" ]]
+	;	end-group 
+	;--------------------------
+	fileize: funcl [
+		[catch]
+		path [file!]
+	][
+		if any [
+			root? path
+		][
+			throw make error! "cannot turn path into a file"
+		]
+		
+		either is-dir? path [
+			path head remove back tail copy path
+		][
+			copy path
+		]
+		
+	]
+	
+	
+	
+	;-                                                                                                       .
+	;-----------------------------------------------------------------------------------------------------------
+	;
+	;- FILE / FOLDER MANIPULATION FUNCTIONS
+	;
+	;-----------------------------------------------------------------------------------------------------------
+
+	;--------------------------
+	;-     delete-tree()
+	;--------------------------
+	; purpose:  do a recursive folder delete.
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    uses only REBOL native functions and our own dir-tree above.
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	delete-tree: funcl [
+		path [file!]
+	][
+		vin "delete-tree()"
+	
+		list: dir-tree/absolute path
+		
+		list: sort/reverse list
+		foreach path list [
+			delete path
+		]
+	
+		vout
+	]
+
+
+		
+	;--------------------------
+	;-     mv()
+	;--------------------------
+	; purpose:  moves a directory or file, using system call move 
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    - if the to path is a folder, it will attempt to put it within that folder.
+	;           - if it's a file path, it will rename the from path to the given path.
+	;           
+	;           - we do not verify if the from path is a folder or a file, you should be aware.
+	;
+	;               ex: 
+	;                   mv %/a/b/c  %/d/e      renames c folder as   %/d/e/     ; note that /d/e/  MUST NOT exist or an overwire error occurs.
+	;                   mv %/a/b/c  %/d/e/     puts content into     %/d/e/c/
+	;
+	;           - this function is setup to fail if we attempt to move a directory into a path which already exists.
+	;
+	;           - note that we deep create the destination folder in all cases.
+	;
+	; to do:    -replace the CALL command with some routines so we don't need to show a DOS console 
+	;
+	; tests:    
+	;--------------------------
+	mv: funcl [
+		[catch]
+		source [file!]
+		destination [file!]
+		/admin "Allow moving root and volumes (only applies to directory type sources)"
+	][
+		vin "mv()"
+		
+		if platform-name <> 'win32 [
+			throw make error! "utils-fils.r/MV() only win32 supported. "
+		]
+		
+		in-buffer:  make string! 10000
+		out-buffer: make string! 10000
+		err-buffer: make string! 10000
+		
+		v?? source
+		source: clean-path source 
+		
+		if dir? source [
+			vprint "source is actually a directory on disk!"
+			source: dirize source
+		]
+		v?? source
+
+		unless exists? source [
+			throw make error! "Source path doesn't exist"
+		]
+
+		v?? destination
+		destination: clean-path destination
+		v?? destination
+		
+		either is-file? source [
+			;---
+			; found a FILE path
+			;         ----
+			vprint "dumping source FILE INTO destination"
+			d-items: itemize-path destination
+			v?? d-items
+			
+			dest-dir: dirize destination
+
+			fname: filename-of source
+			v?? fname
+
+			destination: join dest-dir fname
+			v?? destination
+
+			if exists? destination [
+				throw make error!  "cannot overwrite file that already exists" 
+			]
+			
+			unless exists? dest-dir [
+				vprint "CREATING destination folder"
+				v?? dest-dir
+				make-dir/deep dest-dir
+			]
+
+			sys-source: to-local-file source
+			sys-destination:   to-local-file destination
+			v?? sys-source
+			v?? sys-destination
+			
+			cmd: rejoin [ {move "} sys-source {"  "} sys-destination {"} ]
+			
+			v?? cmd
+			
+			;call/wait/output/error cmd   out-buffer  err-buffer
+			call/show/wait/output/error cmd   out-buffer  err-buffer
+			
+
+			v?? out-buffer
+			unless empty? err-buffer [
+				v?? err-buffer
+				throw make error! rejoin ["SYSTEM ERROR while moving file: " err-buffer ]
+			]
+			
+		][	
+			;---
+			; found a DIRECTORY path
+			;         ---------
+			
+			;---
+			; by default, we do not allow copying from volumes or the root! (just a safety precaution)
+			if all [
+				not admin 
+				any [
+					volume? source
+					root? source
+				]
+			][
+				throw make error! "Invalid source, cannot move root or volume."
+			]
+			
+			either is-dir? destination  [
+				;-------------------
+				; attempt to copy INTO path
+				;--- 
+				vprint "INTO path"
+				destination: dirize destination
+				dest-dir: copy destination
+				
+				d-items: itemize-path source
+				v?? d-items
+				
+				last-dir-item: last head remove back tail d-items
+				v?? last-dir-item
+				if any [
+					last-dir-item = "."
+					last-dir-item = ".."
+					last-dir-item = "/"
+				][
+					throw make error!  "Invalid source folder specification." 
+				]
+				v?? dest-dir
+				
+				destination: join destination last-dir-item
+				if exists? destination [
+					throw make error!  "cannot overwrite folder which already exists"
+				]
+				
+				v?? destination
+				if exists? destination [
+					throw make error!  "cannot MOVE source folder, it already exists in destination folder." 
+				]
+				
+				if not exists? dest-dir [
+					vprint "creating destination folder"
+					make-dir/deep dest-dir
+				]
+				
+				sys-source: to-local-file source
+				sys-destination:   to-local-file destination
+				v?? sys-source
+				v?? sys-destination
+				
+				cmd: rejoin [ {move "} sys-source {"  "} sys-destination {"} ]
+				
+				v?? cmd
+				
+				;call/wait/output/error cmd   out-buffer  err-buffer
+				call/show/wait/output/error cmd   out-buffer  err-buffer
+	
+				v?? out-buffer
+				unless empty? err-buffer [
+					v?? err-buffer
+					throw make error! rejoin ["SYSTEM ERROR while moving folder: " err-buffer ]
+				]
+			][
+				;-------------------
+				; attempt to move AS EXACT, GIVEN path 
+				;--- 
+				vprint "AS PATH"
+				
+				if exists? destination [
+					throw make error!  "cannot MOVE source folder AS a folder that already exists" 
+				]
+				
+				sys-source: to-local-file source
+				sys-destination:   to-local-file destination
+				v?? sys-source
+				v?? sys-destination
+				
+				cmd: rejoin [ {move "} sys-source {"  "} sys-destination {"} ]
+				v?? cmd
+				
+				;call/wait/output/error cmd   out-buffer  err-buffer
+				call/show/wait/output/error cmd   out-buffer  err-buffer
+	
+				v?? out-buffer
+				unless empty? err-buffer [
+					v?? err-buffer
+					throw make error! rejoin ["SYSTEM ERROR while moving folder: " err-buffer ]
+				]
+			]
+		]
+		
+		vout
+	]
+
 	
 	
 	

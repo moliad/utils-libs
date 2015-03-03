@@ -546,7 +546,7 @@ slim/register [
 		if any [
 			not series? data
 			only
-		][data: head insert tail copy [] data repeat: true]
+		][data: head insert/only tail copy [] data repeat: true]
 		
 		either skip [step: step + 1][step: 1]
 		unless every [n: 1]

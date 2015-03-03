@@ -74,12 +74,10 @@ slim/register [
 	;-----------------
 	;-     get-application-title()
 	;-----------------
-	get-application-title: func [
-		/local script parent
+	get-application-title: funcl [
 	][
 		parent: system/script
 		until [
-			;print parent/header
 			script: parent
 			parent: script/parent
 			any [
@@ -87,8 +85,34 @@ slim/register [
 				none? parent/header
 			]
 		]
-		script/title
-	]   
+		all [
+			ttl: get in script 'title
+			to-string ttl
+		]
+	]  
+	
+	 
+	;-----------------
+	;-     get-application-path()
+	;-----------------
+	get-application-path: funcl [
+	][
+		parent: system/script
+		until [
+			script: parent
+			parent: script/parent
+			any [
+				none? parent
+				none? parent/header
+			]
+		]
+		all [
+			file? dir: dirize get in script 'path
+			copy dir
+		]
+	]  
+	
+	 
 			
 
 

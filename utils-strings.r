@@ -63,7 +63,7 @@ REBOL [
 slim/register [
 
 
-
+	parse-utils: slim/open 'utils-parse none
 
 	;-                                                                                                         .
 	;-----------------------------------------------------------------------------------------------------------
@@ -214,12 +214,183 @@ slim/register [
 		string [string!]
 	][
 		vin [{count-lines()}]
-		parse-utils/line-count: 1
+		parse-utils/.line-count: 1
 		
 		parse/all copy/part head string string parse-utils/=line-counter=
 		vout
-		parse-utils/line-count
+		parse-utils/.line-count
 	]
+
+
+
+
+	
+	;-                                                                                                         .
+	;-----------------------------------------------------------------------------------------------------------
+	;- 
+	;- DATES
+	;- 
+	;-----------------------------------------------------------------------------------------------------------
+	
+	;--------------------
+	;-    date-time()
+	;--------------------
+	; use this to prevent having to supply a spec all the time.
+	; the /default option of date-time sets this.
+	default-date-time-spec: "YYYY-MM-DDThh:mm:ssITZ"
+	
+	;---
+	date-time: func [
+		""
+		/with spec ; specify
+		/using thedate [string! date! time!] ; specify an explicit date instead of now()
+		/UTC "removes the timezone from the date being used (given or now)"
+		/default ; set the default to /with spec
+		/local str date-rules thetime tz-string itz-string
+	][
+		;vin ["date-time()"]
+		
+		str: copy ""
+		
+		
+		either spec [
+			if default [
+				default-date-time-spec: spec
+			]
+		][
+			spec: default-date-time-spec
+		]
+		
+		unless thedate [
+			thedate: now/precise
+		]
+		
+		unless thedate/time [
+			thedate/time: 0:00 ; specify midnight if time isn't given (TZ unspecified).
+		]
+		
+		;------------------
+		; UTC time required, bake any tz into time directly
+		;------------------
+		if UTC [
+			if thedate/zone [
+				thedate: thedate - thedate/zone
+				thedate/zone: none
+			]
+		]
+		
+		
+		;------------------
+		; set timezone strings
+		;------------------
+		case [
+			(any [
+				none? thedate/zone
+				thedate/zone = 0:00
+			]) [
+				tz-string: "+0:00"
+				itz-string: "Z"
+			]
+			
+			
+			(thedate/zone < 0:00) [
+				tz-string: itz-string: mold thedate/zone
+			]
+			
+			'default [
+				tz-string: itz-string: rejoin ["+" thedate/zone]
+			
+			]
+		]
+
+		
+		;------------------
+		; extract time from date information.
+		;------------------
+		either time? thedate [
+			thetime: thedate
+			thedate: none
+		][
+			if thedate/time [
+				thetime: thedate/time
+				thedate/time: none
+			]
+		]		
+		
+		
+		;------------------
+
+		;process spec
+		;------------------
+		filler: complement charset "YMDHhmspPS"
+		;error: spec
+		itime: true
+		
+		
+		unless parse/case spec [
+			some [
+				here:
+				(error: here)
+				; padded dates
+				["YYYY" (append str thedate/year)] | 
+				["YY" (append str copy/part at to-string thedate/year 3 2)] | 
+				["MM" (append str zfill thedate/month 2)] |
+				["DD" (append str zfill thedate/day 2)] |
+				["M" (append str thedate/month)] |
+				["D" (append str thedate/day)] |
+				
+				; padded time
+				["hh" (append str zfill thetime/hour 2)] |
+				["mm" (append str zfill thetime/minute 2)] |
+				["ss" (append str zfill to-integer thetime/second 2)] |
+				["SS" (append str zfill (round/to thetime/second 0.001) 6)] | ;precise
+				
+				; am/pm indicator
+				["P" (append str "#@#@#@#")] | 
+				["p" (append str "-@-@-@-")] |
+				
+				; time zone
+				["TZ" (append str tz-string)] |  ; LOCAL TZ
+				["ITZ" (append str itz-string)] | ; internet TZ - like TZ but prints "Z" when the tz is 0:00 (UTC time)
+				
+				; american/english style 12hour format
+				["H" (
+					itime: remainder thetime/hour 12
+					if 0 = itime [ itime: 12]
+					append str itime
+					itime: either thetime/hour >= 12 ["PM"]["AM"]
+					)
+				] |
+				
+				; non padded time
+				["h" (append str thetime/hour)] |
+				["m" (append str thetime/minute)] |
+				["s" (append str to-integer thetime/second)] |
+				
+				; escape a character (skip next)
+				["^^" copy val skip (append str val)] |
+				
+				; copy input
+				[copy val some filler (append str val)]
+				
+			]
+			(replace str "#@#@#@#" any [to-string itime ""])
+			(replace str "-@-@-@-" lowercase any [to-string itime ""])
+		][
+			to-error rejoin [
+				"date-time() DATE FORMAT ERROR: " spec newline
+				"  starting at: "  error newline
+				"  valid so far: " str newline
+			]
+		]
+		;vout 
+		str
+	]
+	
+
+
+
+
 
 ]
 

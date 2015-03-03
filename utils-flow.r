@@ -269,6 +269,28 @@ slim/register [
 	]
 
 
+	
+	
+	;--------------------------
+	;-     partial()
+	;--------------------------
+	; purpose:  attempt to evaluate ALL expressions, but notify if incomplete.
+	;
+	; inputs:   block of code to evaluate
+	;
+	; returns:  returns true when at least one expression returns NONE or FALSE
+	;
+	; notes:    like 'ALL, the value of the last item is also taken into consideration.
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	partial: funcl [
+		eval-block [block!]
+	][
+		not all eval-block
+	]
 
 
 

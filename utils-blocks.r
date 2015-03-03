@@ -64,6 +64,7 @@ REBOL [
 ;--------------------------------------
 
 slim/register [
+	
 
 	;-                                                                                                         .
 	;-----------------------------------------------------------------------------------------------------------
@@ -162,7 +163,7 @@ slim/register [
 
 	
 	;--------------------------
-	;-         replace-deep()
+	;-     replace-deep()
 	;--------------------------
 	; purpose:  given a tree of blocks finds a value and replaces it with another.
 	;
@@ -269,7 +270,137 @@ slim/register [
 		]
 	]
 	
-			
+	
+	
+		
+	;--------------------------
+	;-     extract-set-words()
+	;--------------------------
+	; purpose:  finds set-words within a block of code, hierarchically if required.
+	;
+	; inputs:   block!
+	;
+	; returns:  the list of words in set or normal word notation
+	;
+	; notes:    none-transparent
+	;
+	; tests:    [  
+	;				probe extract-set-words/only [ t: rr x: 5]  
+	;			]
+	;--------------------------
+	extract-set-words: funcl [
+		blk [block! none!]
+		/only "returns values as set-words, not ordinary words.  Useful for creating object specs."
+		/ignore iblk [block!] "don't extract these words."
+		/deep "find set-words in sub-blocks too"
+		;/local words rule word =rule= =deep-rules=
+	][
+		word: none
+		
+		words: make block! 12
+		iblk: any [iblk []]
+		=deep-rule=: [skip]
+		
+		=rule=: [
+			any [
+				set word set-word! (
+					unless find iblk to-word :word [
+						append words either only [ word ][to-word word]
+					]
+				)
+				| hash! 
+				| list!
+				| =deep-rule=
+				| skip
+			]
+		]
+		
+		if deep [
+			=deep-rule=: [ into =rule= ]
+		]
+		
+		parse blk =rule= 
+		
+		words
+	]
+	
+	
+	
+	;--------------------------
+	;-     load-fragment()
+	;--------------------------
+	; purpose:  given a script of rebol code, attempt to load it up to the last incomplete value.
+	;
+	; inputs:   a string of rebol source.
+	;
+	; returns:  similar to load/all but the first item is a block of ALL loaded values, instead of just one.
+	;
+	;           we also add a third item , which is either none, if all went well,  or an disarmed error
+	;           object in the event of a failed load/next.
+	;
+	;           we expect errors in many cases, since we use this function to load partial scripts, which may or may not
+	;           be fully downloaded yet.
+	;
+	;
+	;
+	; notes:    we clear the given script of any value which was successfully loaded.
+	;           The last value in the script MAY not be loaded when it can be extended by more script.
+	;
+	;           ex:  numbers, words, etc.  In such case we leave the potential last value in the script and do not 
+	;                return it in the return value block.
+	;
+	;           if you put a whitespace (or comment) at the end, it will definitely terminate the last value. 
+	;           we then include that last value, since it is unambiguously terminated..
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	load-fragment: funcl [
+		script [ string! binary! ]
+		/cut "Automatically clear the input script with whatever was successfully loaded.  Doesn't clear the error generating input string."
+	][
+		;vin "load-buffer()"
+		;v?? xfer-buffer
+		
+		script: as-string script
+		rval: copy [  ]
+		
+		;--- 
+		; loop over block until we hit its end or an incomplete value.
+		;
+		until [
+			not all [
+				error-at: script
+				not error? blk: try [ load/next script ]
+				(error-at: none  'continue)
+				not empty? blk
+				any [
+					not empty? second blk ; if its not empty, we know all types are complete.
+					find [ string! block! object! none! logic! tag!] type?/word first blk
+				]
+				rval: insert/only rval first blk
+				script: second blk
+			]
+		]
+		
+		if error? blk [
+			blk: disarm blk
+		]
+		
+		error-at: all [
+			error-at
+			blk
+		]
+		
+		if cut [
+			remove/part  head script  script
+			script: head script
+		]
+		
+		;vout
+		first reduce [ compose/deep [ [(head rval)]  (script) (error-at) ] rval: none ]  
+	]
 ]
 
 

@@ -65,11 +65,8 @@ slim/register [
 	;-     GLOBALS
 	;
 	;-----------------------------------------------------------------------------------------------------------
-	platform-little-endian: found? find  [ win32 linux OSX ] probe platform-name
+	platform-little-endian: found? find  [ win32 linux OSX ] platform-name
 	platform-big-endian:    not platform-little-endian
-	
-	?? platform-little-endian
-	?? platform-big-endian
 	
 	
 	; used for fast integer convertion (outputs small endian values on intel cpus)
@@ -145,6 +142,7 @@ slim/register [
 	
 
 	
+	
 	;--------------------------
 	;-     load-u32()
 	;--------------------------
@@ -161,7 +159,7 @@ slim/register [
 	load-u32: funcl [
 		data [string! binary!]
 	][
-		n: to-integer to-binary data
+		n: to-integer to binary! :data
 		if negative? n [
 			n: n + 2 ** 32
 		]
@@ -186,7 +184,7 @@ slim/register [
 		/big-endian
 		/little-endian
 	][
-		n: load join "#{" [form to-hex to-integer n "}"]
+		n: load join "#{" [form to-hex n "}"]
 		
 		;-----
 		; by default we return the platform
@@ -264,14 +262,76 @@ slim/register [
 	]
 
 
-
 	;--------------------------
-	;-     int-to-ui32-be-binary()
+	;-     int-to-u32-le-binary()
+	;
+	; old name kept for backwards compatibility.
+	int-to-ui32-le-binary: 
 	;--------------------------
-	int-to-ui32-be-binary: func[i][
-		ui32-struct/value: i copy third ui32-struct
+	int-to-u32-le-binary: func[i][
+		ui32-struct/value: i 
+		copy third ui32-struct
 	]
 	
+	
+	;------------------------
+	;-     int-to-i32-be-binary
+	;
+	; this function allows negative values.
+	;-----------------------
+	int-to-i32-be-binary: func [
+		val [integer!]
+	][
+		to binary! reduce [
+			shift (val and -16777216) 24  ; to-integer #{FF000000}
+			shift (val and 16711680) 16
+			shift (val and 65280) 8
+			val and 255
+		]
+	]
+	
+	
+	;--------------------------
+	;-     to-binary()
+	;--------------------------
+	; purpose:  enhances the core version of to-binary 
+	;           with one which is symmetric with to-integer wrt binaries and integers.
+	;
+	; inputs:   any value
+	;
+	; notes:    the core version of to-binary is useless with integer inputs 
+	;           (it does a to-string on the number first !?!?!).
+	;--------------------------
+	to-binary: func [
+		value
+	][
+		either integer? value [
+			int-to-i32-be-binary value
+		][
+			to binary! :value
+		]
+	]
+	
+	
+	;------------------------
+	;-     int-to-u31-be-binary
+	;
+	; this function DOES NOT allow negative values.
+	;-----------------------
+	int-to-u31-be-binary: func [
+		[catch]
+		val
+	][
+		if val < 0 [
+			throw make error! "int-to-u31-be-binary() cannot use negative values."
+		]
+		make binary! reduce [
+			shift (val and 2130706432) 24 ; to-integer #{7F000000}
+			shift (val and 16711680) 16
+			shift (val and 65280) 8
+			val and 255
+		]
+	]
 ]
 
 

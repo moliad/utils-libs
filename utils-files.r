@@ -356,12 +356,9 @@ slim/register [
 	is-dir?: func [
 		path [string! file!]
 	][
-		path: to-string path
-		replace/all path "\" "/"
-		
-		all [
-			path: find/last/tail path "/"
-			tail? path
+		any [
+			#"/" = last path
+			#"\" = last path
 		]
 	]
 	

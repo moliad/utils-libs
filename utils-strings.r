@@ -231,6 +231,20 @@ slim/register [
 	;- DATES
 	;- 
 	;-----------------------------------------------------------------------------------------------------------
+
+	;--------------------------
+	;-         international-datestring()
+	;--------------------------
+	; purpose:  just a quick setup to return the prefered international date format in string! format
+	;--------------------------
+	international-datestring: funcl [
+		date [date!]
+	][
+		rejoin [date/year "-" zfill date/month 2 "-" zfill date/day 2]
+	]
+	
+	
+	
 	
 	;--------------------
 	;-    date-time()

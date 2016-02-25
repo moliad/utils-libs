@@ -71,6 +71,7 @@ slim/register [
 	
 	; used for fast integer convertion (outputs small endian values on intel cpus)
 	ui32-struct: make struct! [value [integer!]] [0]
+	decimal-struct: make struct! [value [decimal!]] none
 	
 	;-                                                                                                         .
 	;-----------------------------------------------------------------------------------------------------------
@@ -80,15 +81,17 @@ slim/register [
 	;-----------------------------------------------------------------------------------------------------------
 	
 	;--------------------------
-	;- bit()
+	;-     bit()
 	;--------------------------
-	; purpose:  generates an integer which only has the specified bit set.
+	; purpose:  Generates an integer which only has the specified bit set.
 	;
 	; inputs:   
 	;
 	; returns:  
 	;
-	; notes:    offsets larger than 32 will cycle through the 32 bits. (so bit 33 == bit 1 == bit 65)
+	; notes:    Offsets larger than 32 will cycle through the 32 bits. (so bit 33 == bit 1 == bit 65)
+	;
+	;           This is a 1 based spec.  many C specs use a 0 based index, so adjust by one bit.
 	;
 	; tests:    
 	;--------------------------
@@ -332,6 +335,46 @@ slim/register [
 			val and 255
 		]
 	]
+	
+	;--------------------------
+	;-         decimal-to-binary()
+	;--------------------------
+	; purpose:  returns the buffer memory used to represent a decimal! value in RAM.
+	;
+	;           can be used to serialize decimal! values and reload them using binary-to-decimal
+	;
+	; returns:  an 8 byte (64bit) IEEE value
+	;--------------------------
+	decimal-to-binary: funcl [
+		value [decimal!]
+	][
+		vin "decimal-to-binary()"
+		decimal-struct/value: value
+		vout
+		copy third decimal-struct
+	]
+	
+	
+	;--------------------------
+	;-         binary-to-decimal()
+	;--------------------------
+	; purpose:  loads a serialized 64 bit IEEE float as a rebol decimal! value.
+	;
+	; notes:    should have been serialized with decimal-to-binary (may work with C double values)
+	;--------------------------
+	binary-to-decimal: funcl [
+		[catch]
+		value [binary!]
+	][
+		vin "binary-to-decimal()"
+		unless 8 = length? value [
+			throw make error! "binary-to-decimal() requires a binary of exactly 8 bytes."
+		]
+		change third decimal-struct value
+		vout
+		decimal-struct/value
+	]
+	
 ]
 
 

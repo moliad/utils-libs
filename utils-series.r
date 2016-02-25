@@ -68,6 +68,60 @@ slim/register [
 
 			
 	
+	
+	;--------------------------
+	;-     probe-binary-block()
+	;--------------------------
+	; purpose:  
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    
+	;
+	; tests:    
+	;--------------------------
+	probe-binary-block: funcl [
+		bin  [binary!]
+		amount [integer!]
+		/binary
+	][
+		vin "stone/probe-binary-block()"
+		i: 0
+		words: 4
+		li: 0
+		wi: 0
+		
+		either binary [
+			repeat i amount [
+				if li >= 4 [wi: wi + 1  vprin "  "  li: 0]
+				if wi >= words [vprint "" li: 0 wi: 0]
+				li: li + 1
+				letter: pick bin i
+				
+				vprin rejoin [(next next head remove back tail mold (to-binary to-char letter)) "(" (either (letter > 31) [to-char letter ]["."] ) ")"  "  "]
+				
+				;vprin rejoin [to-integer letter  "(" (either (letter > 31) [to-char letter ][".."] ) ")"  "  "]
+			]
+		][
+			repeat i amount [
+				if li >= 4 [wi: wi + 1  vprin "  "  li: 0]
+				if wi >= words [vprint "" li: 0 wi: 0]
+				li: li + 1
+				letter: pick bin i
+				vprin rejoin [to-integer letter  "(" (either (letter > 31) [to-char letter ][".."] ) ")"  "  "]
+			]
+		]
+		vprint ""
+	
+		vout
+	]
+	
+	
+	
+	
+	
 	;--------------------------
 	;-     count()
 	;--------------------------
@@ -180,10 +234,7 @@ slim/register [
 	]
 	
 	
-	
-	
-	
-	
+
 	;-----------------
 	;-     remove-duplicates()
 	;

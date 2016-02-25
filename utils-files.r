@@ -85,6 +85,20 @@ REBOL [
 
 slim/register [
 
+	; declarations to preserve word locality 
+	CopyFile: none
+	
+	
+	;-                                                                                                       .
+	;-----------------------------------------------------------------------------------------------------------
+	;
+	;-     LIBS
+	;
+	;-----------------------------------------------------------------------------------------------------------
+	if platform-name = 'win32 [
+		slim/open/expose 'win32-kernel none [CopyFile: win32-Copyfile]
+	]
+	
 	
 
 	;-                                                                                                         .
@@ -98,7 +112,7 @@ slim/register [
 	
 	
 	;-------------------
-	;-    as-file()
+	;-     as-file()
 	;--------------------------
 	;
 	; (prototype, might be a bit unstable with weird paths)
@@ -231,9 +245,38 @@ slim/register [
 	]
 	
 
+	;--------------------------
+	;-     prefix-of()
+	;--------------------------
+	; purpose:  returns the filename without file extension
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    returns none if the given path has no filename
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	prefix-of: funcl [
+		path [file! string! none!]
+	][
+		all [
+			path
+			file: filename-of path
+			ext: find/last file "."
+			file: copy/part file ext
+			not empty? file
+			file
+		]
+	]
+
 	
 	;--------------------------
 	;-     extension-of()
+	;-     suffix-of()
 	;--------------------------
 	; purpose:  returns the extension part of a file path
 	;
@@ -242,7 +285,8 @@ slim/register [
 	; returns:  -the extension of the file, or none, if its a directory (even if it contains a "." in the path)
 	;           -we silently ignore none inputs by returning none
 	;
-	; notes:    -we rely only on the file path given, not its actual type on disk to verify if the input is indeed a directory.
+	; notes:    -we don't return the "." as part of the extension.
+	;           -we rely only on the file path given, not its actual type on disk to verify if the input is indeed a directory.
 	;           -we return an offset from the filename of the given path.
 	;
 	; tests:   
@@ -262,7 +306,8 @@ slim/register [
 	; deprecated names:
 		ext-part: 
 	;--------------------------
-	extension-of: funcl [
+	extension-of: 
+	suffix-of: funcl [
 		path [string! file! none!]
 	][
 		all [
@@ -722,6 +767,119 @@ slim/register [
 		
 	]
 	
+
+	;--------------------------
+	;-         UNC-host-of()
+	;--------------------------
+	; purpose:  get the UNC host name of a path, if any.
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    using /extract converts the given path to a local path on the returned host.
+	;
+	; to do:    explicitely test on linux and other platforms.
+	;
+	; tests:    
+	;--------------------------
+	UNC-host-of: funcl [
+		path [  file! string!  ]
+		/extract "remove the hostname from the path.  any DRIVE map is replaced by a local file path"
+	][
+		;vin "UNC-host-of()"
+		if file? path [
+			path: to-local-file path
+		]
+		
+		.host:  none
+		.drive: none
+		.path:  none
+		
+		=slash=:   charset "/\"
+		=content=: complement =slash=
+		=letter=:  charset [#"a" - #"z"  #"A" - #"Z"]
+		
+		;----
+		; win32 specific implementation.
+		parse/all path [
+			2 =slash=
+			copy .host some =content=
+			=slash=
+			copy .drive =letter= 
+			[
+				"$"
+				| .backup: =slash= :.backup
+			]
+			
+			.here: [
+				;=slash=
+				to end
+			]
+		]
+		
+		if all [
+			extract
+			.here
+		][
+			;print "REMOVING"
+			remove/part path .here
+			insert path join .drive ":"
+		]
+		
+		;?? .host
+		;?? .drive
+		;?? path
+	
+		;vout
+		.host
+	]
+	
+	
+
+
+
+	;--------------------------
+	;-     file-info()
+	;--------------------------
+	; purpose:  get extended file information, using get-modes and finfo
+	;--------------------------
+	file-info: funcl [
+		[catch]
+		path [file!]
+	][
+		throw-on-error [
+			all [
+				target: make port! path
+				( 
+					query target 
+					target/status 
+				)
+				target/status
+				info: get-modes target [ 
+					creation-date 
+					access-date 
+					modification-date 
+					hidden 
+					system
+				]
+				append info compose [
+					size: (target/size) 
+					path: (path)
+					directory:  (directory-of path)
+					filename: (filename-of  path)
+					extension: (extension-of  path)
+					metrics-checksum: none
+				]
+				info: context info
+			]
+			info/metrics-checksum: ( checksum rejoin [ "" info/modification-date info/size path ] )
+			info 
+		]
+	]
+
+
+
 	
 	
 	;-                                                                                                       .
@@ -761,6 +919,52 @@ slim/register [
 		vout
 	]
 
+
+	
+	;--------------------------
+	;-     os-copy()
+	;--------------------------
+	; purpose:  Creates a copy of a file, using standard OS routines..
+	;
+	; inputs:   
+	;
+	; returns:  destination on success, raises error on input or OS error.
+	;
+	; notes:    -Source and destination can be different volumes
+	;
+	;           -if destination is a dir path, we use the source filename
+	;
+	;           -Replaces destination if it already exists.
+	;
+	;           -preserves file attributes
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	os-copy: funcl [
+		[catch]
+		source [file!]
+		destination [file!]
+	][
+		throw-on-error [
+			if is-dir? destination [
+				unless f: filename-of source [
+					to-error "win32-copy() needs a source path with filename."
+				]
+				destination: join destination f
+			]
+			
+			result: (Copyfile to-local-file source   to-local-file destination )
+			either (0 = result) [
+				
+				to-error rejoin ["os-copy() OS returned failure on copy.^/" to-local-file source]
+			][
+				destination
+			]
+		]
+	]
+	
 
 		
 	;--------------------------

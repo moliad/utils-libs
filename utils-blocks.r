@@ -270,6 +270,49 @@ slim/register [
 		]
 	]
 	
+
+
+	
+	;--------------------------
+	;-             keep-duplicates()
+	;--------------------------
+	; purpose:  returns only duplicates from a block
+	;
+	; notes:    returns a new series.
+	;           current implementation may be quite slow on large lists.
+	;--------------------------
+	keep-duplicates: func [
+		series [block!]
+		/local i
+	][
+		;print [">>>>" now/precise]
+		series: make hash! out-blk: series
+		out-blk: unique out-blk
+
+		had-none?: found? find series none
+		foreach item out-blk [
+		;while [not tail? series] [
+		;	i: first series  
+			change find series item none
+		]
+		out-blk: unique out-blk
+		
+		;---
+		; remove the none entry if there where none on entry
+		all [
+			had-none?
+			blk: find out-blk none
+			remove blk
+		]
+		
+		;print ["<<<" now/precise]
+		
+		out-blk
+	]
+			
+	
+	
+	
 	
 	
 		

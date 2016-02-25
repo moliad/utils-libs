@@ -63,16 +63,19 @@ REBOL [
 
 slim/register [
 
+	slim/open/expose 'utils-strings none [ international-datestring ]
+
 
 	;-                                                                                                         .
 	;-----------------------------------------------------------------------------------------------------------
 	;- 
-	;- FUNCTIONS
+	;-     FUNCTIONS
 	;- 
 	;-----------------------------------------------------------------------------------------------------------
 
+
 	;-----------------
-	;-     get-application-title()
+	;-         get-application-title()
 	;-----------------
 	get-application-title: funcl [
 	][
@@ -93,7 +96,7 @@ slim/register [
 	
 	 
 	;-----------------
-	;-     get-application-path()
+	;-         get-application-path()
 	;-----------------
 	get-application-path: funcl [
 	][
@@ -113,13 +116,11 @@ slim/register [
 	]  
 	
 	 
-			
-
 
 	
 	
 	;--------------------------
-	;-     source-entab()
+	;-         source-entab()
 	;--------------------------
 	; purpose:  similar to 'ENTAB, but only at the head of the lines... not within.
 	;
@@ -186,8 +187,283 @@ slim/register [
 		vout
 		result
 	]
-
 			
+
+
+	;-                                                                                                       .
+	;-----------------------------------------------------------------------------------------------------------
+	;
+	;-     HEADER MANIPULATION FUNCS
+	;
+	;-----------------------------------------------------------------------------------------------------------
+
+
+	;--------------------------
+	;-         get-header-value()
+	;--------------------------
+	; purpose:  a generic func to get header info, not fast, but effective.
+	;--------------------------
+	get-header-value: funcl [
+		src [file! string! object!]
+		attr [word!]
+	][
+		vin "get-header-value()"
+
+		if file? src [
+			src: read src
+		]
+		
+		src-hdr: switch type?/word src [
+			object! [src]
+			string! [
+				first load/header src
+			]
+		]
+		
+		unless value: in src-hdr attr [
+			to-error rejoin ["source has no '" attr " to get!"]
+		]
+		value: get value
+		v?? value
+			
+		vout
+		value
+	]
+
+
+	;--------------------------
+	;-         bump-script-version()
+	;--------------------------
+	; purpose:  automatically find and replace a version value in a header.   
+	;
+	; notes:    The version MUST exist (though it may not be a valid tuple equivalent value... like none).
+	;--------------------------
+	bump-script-version: funcl [
+		[catch]
+		src [file! string! object!]
+	][
+		throw-on-error [
+			vin "bump-script-version()"
+			
+			if file? src [
+				src: read src
+			]
+			src-version: get-header-value src 'version
+			
+			src-version: any [
+				all [
+					tuple? v: attempt [ to-tuple to-string src-version ]
+					v
+				]
+				0.0.0
+			]
+			
+			v?? src-version
+;			unless tuple? src-version [
+;				to-error "source version is not a tuple or numeric scalar value."
+;			]
+			
+			dest-version: src-version + 0.0.1
+			
+			v?? dest-version
+			
+			;-------
+			; do a version substitution within source!
+			;-------
+			either object? src [
+				src/version: dest-version
+			][
+				;---
+				; follow rebol interpreter rules for header identification
+				;
+				; but assume a well-formed header with a version inside.
+				;---
+				str: find/tail src "REBOL"
+				
+				;---
+				; skip block start
+				str: find/tail str "["
+				
+				; move ahead until we find a version 
+				value-start: find/tail str "version:"
+				v: value-start
+				parse/all value-start [
+					; skip all whitespace
+					any [" " | "^-" | "^/" ] v:
+				]
+				value-start: v
+
+				
+				;---
+				; find end of that version value
+				set [tmp value-end] load/next value-start
+				
+				vprint  [ "replacing: " copy/part value-start value-end]
+				
+				change/part value-start to-string dest-version value-end
+			]
+			
+			vout
+						
+			src
+		]
+	]
+	
+	
+	;--------------------------
+	;-         update-script-date()
+	;--------------------------
+	; purpose:  
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	update-script-date: funcl [
+		[catch]
+		src [file! string! object!]
+	][
+		throw-on-error [
+			vin "update-script-date()"
+	
+			if file? src [
+				src: read src
+			]
+			
+			;unless src-date: get-header-value src 'date
+			
+			dest-date: international-datestring now
+			v?? dest-date
+			
+			;-------
+			; do a date substitution within source!
+			;-------
+			either object? src [
+				src/date: dest-date
+			][
+				;---
+				; follow rebol interpreter rules for header identification
+				;
+				; but assume a well-formed header with a date inside.
+				;---
+				str: find/tail src "REBOL"
+				
+				;---
+				; skip block start
+				str: find/tail str "["
+				
+				; move ahead until we find a date 
+				value-start: find/tail str "date:"
+				v: value-start
+				parse/all value-start [
+					any [" " | "^-" | "^/" ] v:
+				]
+				value-start: v
+				
+				;---
+				; find end of that version value
+				set [tmp value-end] load/next value-start
+				
+				vprint  [ "replacing: " copy/part value-start value-end]
+				
+				change/part value-start to-string dest-date value-end
+			]
+			
+			vout
+						
+			src
+		]
+	]
+	
+	
+	;--------------------------
+	;-         extend-script-history()
+	;--------------------------
+	; purpose:  
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	extend-script-history: funcl [
+		[catch]
+		src [ file! string! object! ]
+		comment [ string! ]
+	][
+		throw-on-error [
+			vin "extend-script-history()"
+	
+			if file? src [
+				src: read src
+			]
+			
+			history: any [
+				get-header-value src 'history
+				copy ""
+			]
+			version: get-header-value src 'version
+			
+			unless find rejoin ["v" version " - "] history [
+				append history rejoin [	"^/^-^-v" version " - " international-datestring now "^/^-^-^-"]
+			]
+			trim comment
+			
+			history: rejoin [
+				"{" history
+				"-" comment "^/"
+				"^-}"
+			]
+			
+			;-------
+			; do a date substitution within source!
+			;-------
+			either object? src [
+				src/history: history
+			][
+				;---
+				; follow rebol interpreter rules for header identification
+				;
+				; but assume a well-formed header with a date inside.
+				;---
+				str: find/tail src "REBOL"
+				
+				;---
+				; skip block start
+				str: find/tail str "["
+				
+				; move ahead until we find a history 
+				value-start: find/tail str "history:"
+				v: value-start
+				parse/all value-start [
+					any [" " | "^-" | "^/" ] v:
+				]
+				value-start: v
+				
+				;---
+				; find end of that version value
+				set [tmp value-end] load/next value-start
+				
+				vprint  [ "replacing: " copy/part value-start value-end]
+				
+				change/part value-start history value-end
+			]
+			vout
+						
+			src
+		]
+	]
 ]
 
 ;------------------------------------

@@ -78,7 +78,8 @@ slim/register [
         
         =colon=: charset ":"
         =lbl-char=: union (union =alpha= =digit=) charset "-_"
-        =lbl=: [=alpha= any =api-lbl-char=]
+        =token-word=: [=alpha= any =api-lbl-char=]
+        =lbl=: :=token-word= ;[=alpha= any =api-lbl-char=]
 
 		=comment=: [";" [ [to "^/"] | [ to end]]]
 
@@ -132,7 +133,7 @@ slim/register [
     ;--------------------------
     ;-     bind-rule()
     ;--------------------------
-    ; purpose:  given a block of code, bind any of our rules within it.
+    ; purpose:  given a block of code, bind any of OUR rules within it.
     ;
     ; inputs:   a block of parse rules to bind our rules to.
     ;

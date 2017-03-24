@@ -214,7 +214,56 @@ slim/register [
 	;
 	;-----------------------------------------------------------------------------------------------------------
 	
+
 	
+	
+	;--------------------------
+	;-    struct-array()
+	;--------------------------
+	; purpose:  allows us to build a repetition within a struct
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    unfortunately, we must access the values as  struct/val1 struct/val2  (we can't get a block with all values)
+	;           with strings we can fudge the system by using the address-to-string function
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	struct-array: funcl [
+		name [word!] 
+		type [word! datatype!]
+		size [integer!]
+	][
+		vin "struct-array()"
+		if datatype? :type [
+			type: to-word :type
+		]
+		
+		if size < 1 [
+			to-error "utils-syslib/struct-array() size must be larger than 0"
+		]
+		
+		rval: copy []
+		type: append copy [] type
+		
+		repeat i size [
+			rval: insert rval reduce [ 
+				to-word join name i				type  ; we don't want to add any new-line in the block.  so we but var and type on same line here.
+			]
+		]
+		
+		rval: head rval
+		
+		vout
+		rval
+	]
+
+
+
 	
 	;--------------------------
 	;-    sizeof()

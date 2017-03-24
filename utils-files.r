@@ -84,10 +84,7 @@ REBOL [
 
 
 slim/register [
-
 	; declarations to preserve word locality 
-	CopyFile: none
-	
 	
 	;-                                                                                                       .
 	;-----------------------------------------------------------------------------------------------------------
@@ -95,9 +92,7 @@ slim/register [
 	;-     LIBS
 	;
 	;-----------------------------------------------------------------------------------------------------------
-	if platform-name = 'win32 [
-		slim/open/expose 'win32-kernel none [CopyFile: win32-Copyfile]
-	]
+	slim/open/expose/platform 'utils-fileops none [fop-copy]
 	
 	
 
@@ -426,9 +421,13 @@ slim/register [
 		/root rootpath [file! none!]
 		/absolute "returns absolute paths"
 		/ignore i-blk [block! file!] "if the path is within the ignore paths block, we reply an empty block, paths must be given as a complete path including %./ or else is ignored."
+		
+		; providing a hash! will significantly improve performance
+		/filter extensions [block! hash! none!] "only list files matching a list of extensions.  (must include '.')"
 		;/local list item data subpath dirpath rval
 	][
 		rval: copy []
+		;extensions: any [extensions []]
 		
 		i-blk: any [i-blk []]
 		i-blk: compose [(i-blk)]
@@ -467,9 +466,9 @@ slim/register [
 					
 					; list content of this new path item (files are returned directly)
 					either absolute [
-						data: dir-tree/root/absolute/ignore subpath rootpath i-blk
+						data: dir-tree/root/absolute/ignore/filter subpath rootpath i-blk extensions
 					][
-						data: dir-tree/root/ignore subpath rootpath i-blk
+						data: dir-tree/root/ignore/filter subpath rootpath i-blk extensions
 					]
 					;if (length? data) > 0 [
 						insert tail rval data
@@ -479,8 +478,21 @@ slim/register [
 				if absolute [
 					path: clean-path join rootpath path
 				]
+				
 				; when the path is a file, just return it, it will be compiled with the rest.
 				rval: path
+				;?? path
+				; apply filtering if given
+				if all [
+					extensions
+					;probe extensions
+					any [
+						not ext: find/last path "."
+						not find extensions to-string ext
+					]
+				][
+					rval: [] ; will insert nothing
+				]
 			]
 		]
 		
@@ -490,7 +502,6 @@ slim/register [
 		
 		rval
 	]
-	
 	
 	
 	;--------------------------
@@ -769,7 +780,7 @@ slim/register [
 	
 
 	;--------------------------
-	;-         UNC-host-of()
+	;-     UNC-host-of()
 	;--------------------------
 	; purpose:  get the UNC host name of a path, if any.
 	;
@@ -785,7 +796,7 @@ slim/register [
 	;--------------------------
 	UNC-host-of: funcl [
 		path [  file! string!  ]
-		/extract "remove the hostname from the path.  any DRIVE map is replaced by a local file path"
+		/extract "remove the hostname from the path.  any DRIVE map is replaced by a local file path (in-place).  ex: //host/C/path/to/file.txt  becomes C:/path/to/file.txt"
 	][
 		;vin "UNC-host-of()"
 		if file? path [
@@ -950,14 +961,13 @@ slim/register [
 		throw-on-error [
 			if is-dir? destination [
 				unless f: filename-of source [
-					to-error "win32-copy() needs a source path with filename."
+					to-error "win32-copy() needs a source path with FILENAME."
 				]
 				destination: join destination f
 			]
 			
-			result: (Copyfile to-local-file source   to-local-file destination )
+			result: (fop-copy to-local-file source   to-local-file destination )
 			either (0 = result) [
-				
 				to-error rejoin ["os-copy() OS returned failure on copy.^/" to-local-file source]
 			][
 				destination

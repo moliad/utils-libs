@@ -274,7 +274,7 @@ slim/register [
 
 	
 	;--------------------------
-	;-             keep-duplicates()
+	;-     keep-duplicates()
 	;--------------------------
 	; purpose:  returns only duplicates from a block
 	;

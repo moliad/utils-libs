@@ -293,10 +293,96 @@ slim/register [
 	]
 
 
+	;--------------------------
+	;-         getc()
+	;--------------------------
+	; purpose:  low-level character input method.
+	;--------------------------
+	getc: has [ console-port char ][
+		if console-port: open/binary [scheme: 'console] [
+			wait console-port
+			char: to-char first console-port
+			;?? char
+			close console-port
+			char
+		]
+	]
 
 
+
+	;--------------------------
+	;-         askchar()
+	;--------------------------
+	; purpose:  like ASK but returns after a single char, from a given list.
+	;
+	; inputs:   a block of options which are pairs of [ char! word! ...]
+	;			/fail allows you to fail if wrong character is pressed, we return none in such a case.
+	;
+	; returns:  
+	;
+	; notes:    - unless you use /fail the function doesn't return until a valid char is pressed.
+	;			- you CAN use any value a part char! for the value part of the selection
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	askchar: funcl [
+		selection [block!]
+		/fail
+	][
+		vin "askchar()"
+		spec: copy []
+
+		either fail [
+			char: getc
+			rval: select selection char
+		][
+			forever [
+				char: getc
+				if find selection char [
+					rval: select selection char
+					break
+				]
+			]
+		]
+		
+		vout
+		rval
+	]
 	
-			
+	
+	;--------------------------
+	;-         confirm()
+	;--------------------------
+	; purpose:  a helper around the askchar method for y/n confirmation.
+	;
+	; inputs:   
+	;
+	; returns:  true or none.
+	;
+	; notes:    
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	confirm: funcl [
+		/msg message [ string! block! ]
+	][
+		if msg [
+			if block? message [
+				message: rejoin message
+			]
+			print message
+		]
+		askchar [
+			#"y"	#[true]
+			#"Y"	#[true]
+			#"n"	#[none]
+			#"N"	#[none]
+		]
+	]
 ]
 
 

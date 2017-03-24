@@ -160,7 +160,6 @@ slim/register [
 		vout
 		data
 	]
-	
 			
 				
 	;--------------------------
@@ -223,6 +222,44 @@ slim/register [
 
 
 
+
+	;--------------------------
+	;-         integer-label()
+	;--------------------------
+	; purpose:  takes an integer and returns a human readable version of it.
+	;
+	; inputs:   integer!
+	;--------------------------
+	integer-label: funcl [
+		value [integer!]
+		/of type "a string to append to the label"
+		/default deftype "string to use when no multiplier is given."
+	][
+		;vin "integer-label()"
+		type:    any [type ""]
+		deftype: any [ deftype type ]
+		case [
+			value > 1'000'000'000 [
+				value: value / 1'000'000'000
+				value: round/to value 0.01
+				rejoin ["" value "G" type]
+			]
+			value > 1'000'000 [
+				value: value / 1'000'000
+				value: round/to value 0.1
+				rejoin ["" value "M" type]
+			]
+			value > 1000 [
+				value: value / 1000
+				value: round/to value 0.1
+				rejoin ["" value "K" type]
+			]
+			'default [
+				rejoin ["" value deftype]
+			]
+		]
+		;vout
+	]
 
 	
 	;-                                                                                                         .
@@ -346,8 +383,8 @@ slim/register [
 				here:
 				(error: here)
 				; padded dates
-				["YYYY" (append str thedate/year)] | 
-				["YY" (append str copy/part at to-string thedate/year 3 2)] | 
+				["YYYY" (append str zfill thedate/year 4)] | 
+				["YY" (append str copy/part at (zfill (to-string thedate/year) 4) 3 2)] | 
 				["MM" (append str zfill thedate/month 2)] |
 				["DD" (append str zfill thedate/day 2)] |
 				["M" (append str thedate/month)] |

@@ -85,6 +85,15 @@ slim/register [
 	=crlfx2=: join =crlf= =crlf=
 	=dquote=: #"^""
 	
+
+	=alphanum=: charset [#"0" - #"9" #"a" - #"z" #"A" - #"Z"]
+	=entity-base=:  charset ["^"&" #"^(A0)" - #"^(FF)"]
+	=entity-char=:  union =entity-base= charset "<>"
+	=url-special=:  charset "$-_.+!*'(), "
+	=url-reserved=: charset "&/:;=?@"
+	=not-url=: complement union =url-reserved= union =url-special= =alphanum=
+	
+
 	 
 	 
 	;-                                                                                                         .
@@ -101,6 +110,83 @@ slim/register [
 	;- FUNCTIONS
 	;- 
 	;-----------------------------------------------------------------------------------------------------------
+
+	;--------------------------
+	;-     url-encode()
+	;--------------------------
+	; purpose:  url-encodes given data or part-of, based on refinements.
+	;
+	; inputs:   when no refinements are given, we assume /text /paths and NOT /text
+	;           url encodes all other characters. 
+	;           do not give utf-8 text, it treats the data as a binary string! as per http url conventions (which are ascii).
+	;
+	; returns:  
+	;
+	; notes:    - always returns a string, even if given a url
+	;           - returned value is a copy (does not modify in place)
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	; always returns a NEW sting
+	;--------------------------
+	url-encode: funcl [
+		data [string! url!] 
+		/text "url encodes normal url legal characters"
+		/paths "encodes http RFC path & param reserved characters"
+		/special "encodes special characters"
+	][
+		vin "url-encode()"
+		;----------------------
+		; evaluate function params
+		;----------------------
+		
+		; analyse refinements
+		any [
+			text
+			paths
+			special
+		
+			; no refinements given, we set defaults
+			(paths: true special: true)
+		]
+		
+		; chose charsets based on params
+		=char=: =not-url=
+		
+		if text [
+			=char=: union =char=  =alphanum=
+		]
+		if paths [
+			=char=: union =char= =url-reserved=
+		]
+		if special [
+			=char=: union =char= =url-special=
+		]
+		
+		data: as-string data
+		data: copy data
+		parse/all data [
+			any [
+				here:
+				[
+					[
+					  	copy .char =char= (
+					  		here: change/part here ( 
+					  			rejoin ["%" skip to-hex to integer! to char! .char 6]
+					  		) 1 ; 1 is for the /part argument to change
+					  	) 
+					  	:here
+					]
+					| skip
+				]
+			]
+		]
+		
+		vout
+		data
+	]
 	
 
 	
@@ -193,10 +279,6 @@ slim/register [
 		]
 		list
 	]	
-	
-	
-	
-	
 ]
 
 

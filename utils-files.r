@@ -534,7 +534,7 @@ slim/register [
 			vprobe info? src
 			vprobe info? dest
 			unless exists? src [
-				probe clean-path src
+				vprobe clean-path src
 				to-error "'NEWER? :: source file doesn't exist (yet?)"
 			]
 			all [
@@ -1062,7 +1062,7 @@ slim/register [
 				make-dir/deep dest-dir
 			]
 
-			sys-source: to-local-file source
+			sys-source:  to-local-file source
 			sys-destination:   to-local-file destination
 			v?? sys-source
 			v?? sys-destination

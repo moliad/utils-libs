@@ -90,11 +90,8 @@ slim/register [
 	;-----------------------------------------------------------------------------------------------------------
 
 	
-			
-			
-		
-			
-	
+				
+
 	;--------------------------
 	;-     multi-switch()
 	;--------------------------
@@ -126,99 +123,118 @@ slim/register [
 	;           -if you provide partial paths within the tree, you MUST also call multi-switch with the /only refinement.
 	;
 	; tests:    
-	;       test-preamble 'multi-switch-block <[ 
-	;           fruits: [
-	;               red green [
-	;                   apple  [ 1 ]
-	;                   tomato [ 2 ]
-	;               ]
-	;               
-	;               orange [
-	;                   orange [ 3 ]
-	;               ]
-	;               
-	;               blue purple black [
-	;                   berry [ 4 ]
-	;                   blueberry [ 5 ]
-	;                   blackberry [ 6 ]
-	;               ]
-	;           ]
-	;       ]>
+	;			fruits: [
+	;				red green [
+	;					apple  [ 1 ]
+	;					tomato [ 2 ]
+	;				]
+	;				
+	;				orange [
+	;					orange [ 3 ]
+	;				]
+	;				
+	;				blue purple black [
+	;					berry [ 4 ]
+	;					blueberry [ 5 ]
+	;					blackberry [ 6 ]
+	;				]
+	;			]
 	;
-	;       test-group [ multi-switch  flow  utils-flow.r ] [ multi-switch-block ]
-	;           [ probe multi-switch [black berry] fruits ]
-	;           [ probe multi-switch 'red/tomato fruits ]
-	;           [ probe multi-switch 'red/tomato/joj fruits ]
-	;           [ probe multi-switch [green orange] fruits ]
-	;           [ probe multi-switch/only 'red fruits ]
-	;       end-group
+	;			probe multi-switch [black berry] fruits
+	;			probe multi-switch 'red/tomato fruits
+	;			probe multi-switch 'red/tomato/joj fruits
+	;			probe multi-switch [green orange] fruits
+	;			probe multi-switch/only 'red fruits
 	;--------------------------
-	multi-switch: func [
+	select*: :select
+	all*: :all
+	multi-switch: funcl [
 		path [block! lit-path! path! word!]
 		tree [block!]
 		/only "do not execute the last item, only return the block as-is"
+		/select "use select-mode semantics(chose what follows, not just the next block), implies /only"
+		/all
 		/catch
 	][
-		vin "multi-switch()"
+		;vin "multi-switch()"
 		result: none
 		
+		if select [only: true]
+		
 		if lit-path? path [
-			path: to block path
+			path: to-block path
+		]
+		if path? path [
+			path: to-block path
 		]
 		
 		path: compose [(path)]
-		v?? path
-		v?? tree
+		;v?? path
+		;v?? tree ; careful, on long blocks this can jam app
 		
 		foreach item path [
 			;vprint "======================"
 			;v?? item
-			;v?? tree
-			either tree [
+			;vprint ["tree: " copy/part mold tree 50 ]
+			either block? tree [
 				if paren? item [
 					item: do item
 				]
-				switch type?/word :item [
-					word! [
-						;vprint "WORD !!!!"
-						item: to-lit-word item
-					]
-					none! [
-						;vprint "NONE !!!!"
-						; we return the datatype, not the value
-						; this is because none, as a rule, is a no-op which creates endless cycles in parse loops.
-						item: none!
-					]
-				]
+	;			switch type?/word :item [
+	;				word! [
+	;					;vprint "WORD !!!!"
+	;					item: to-lit-word item
+	;				]
+	;				none! [
+	;					;vprint "NONE !!!!"
+	;					; we return the datatype, not the value
+	;					; this is because none, as a rule, is a no-op which creates endless cycles in parse loops.
+	;					item: none!
+	;				]
+	;			]
 				
 				;vprobe type? item
 				;vprobe item
-				;
-				parse tree [
-					(tree: none)
-					some [
-						set yyy here: item
-						
-						;(v?? yyy)
-						(
-							if tree: find here block! [
-								tree: first tree
-						;       v?? tree
-							]
-							here: tail here
-						)
-						:here
-						|
-						set zzz skip
-						;(v?? zzz)
+				either select [
+					;vprint "using select-mode"
+					tree: select* tree :item
+				][
+					tree: all* [
+						blk: find tree :item
+						blk: find blk block!
+						first blk
 					]
 				]
+	;				parse tree [
+	;					(tree: none)
+	;					some [
+	;						;set yyy 
+	;						;(v?? yyy)
+	;						here: item
+	;						(
+	;							either tree: find here block! [
+	;								tree: first tree
+	;								;v?? tree
+	;							][
+	;								;---
+	;								; this is a fallback for the case where we use this function for selection.
+	;								tree: pick here 2
+	;							]
+	;							here: tail here
+	;						)
+	;						:here
+	;						|
+	;						;set zzz 
+	;						skip
+	;						;(v?? zzz)
+	;					]
+	;				]
+	;			]
 			][
-				; skip the rest of the path, we already failed
+				; skip the rest of the path, we already failed or found the item.
 				break
 			]
 		]
-		
 		;v?? tree
 		
 		; did we browse to where we wanted?
@@ -229,11 +245,32 @@ slim/register [
 				catch do tree
 			]
 		]
-		vout
+		;vout
+		
+		;v?? result
+		
 		; we return none if browse isn't successful
 		result
 	]
 
+
+	;--------------------------
+	;-     deep-select()
+	;--------------------------
+	; purpose:  like multi-switch but with select semantics.
+	;
+	; if series is none! we just stay none transparent and return none as well
+	;--------------------------
+	deep-select: funcl [
+		series [block! none!]
+		selector [block! lit-path! path! word!]
+	][
+		either series [
+			multi-switch/select selector series
+		][
+			none
+		]
+	]
 
 
 	;--------------------------
@@ -292,9 +329,142 @@ slim/register [
 		not all eval-block
 	]
 
+	
+	
+	;--------------------------
+	;-     btype()
+	;--------------------------
+	; purpose:  a complement to forboth returning a special type based on first element of given block
+	;--------------------------
+	btype: funcl [
+		data
+	][
+		case [
+			(tail? data) [
+				#[none]
+			]
+			(block? first data) [
+				'block
+			]
+			'default [
+				'item
+			]
+		]
+	]
+	
+	;--------------------------
+	;-     forboth()
+	;--------------------------
+	; purpose:  execute a block on each item of a pair of datasets.
+	;
+	; inputs:   using /deep will enter sub-blocks and fail if the whole block structure is not symmetric
+	;
+	; returns:  a block containing both series at their head
+	;--------------------------
+	forboth: funcl [
+		'serie-a [word!]
+		'serie-b [word!]
+		body [block!]
+		/deep "go into sub-blocks"
+		/trace "print trace of function registers while looping"
+	][
+		result: none
+	
+		stack-a: copy []
+		stack-b: copy []
+		
+		word-a: serie-a
+		word-b: serie-b
+		
+		serie-a: get serie-a
+		serie-b: get serie-b
+		if trace [
+			?? serie-a
+			?? serie-b
+			?? word-a
+			?? word-b
+		]
+		
+		ctx: copy []
+		append ctx reduce [to-set-word word-a #[none]]
+		append ctx reduce [to-set-word word-b #[none]]
+		
+		append ctx compose/only [eval-blk: (body)]
+		if trace [?? ctx]
+		
+		ctx: context ctx
+		if trace [?? ctx]
+	
+		; loop over both datasets, and run body setting both series words.
+		; if the datasets are not symmetric in block structure, we raise an error at that point.
+		
+		until [
+			if trace [print "--------------------"]
+			ba: btype serie-a
+			bb: btype serie-b
+			unless deep [
+				ba: not not ba
+				bb: not not bb
+			]
+			
+			if trace [
+				?? ba
+				?? bb
+				?? serie-a
+				?? serie-b
+				?? stack-a
+				?? stack-b
+			]
+			case [
+				((ba) <> (bb)) [ ; if we hit a structure difference
+					to-error "structure difference"
+				]
+				
+				(all [empty? stack-a  empty? serie-a])[  ; we are at end of all data.
+					if trace [print "TAIL!"]
+					result: reduce [head serie-a head serie-b]
+				]
+				
+				(ba = 'block) [
+					if trace [print "SUB BLOCK DETECTED"]
+					
+					append/only stack-a next serie-a
+					append/only stack-b next serie-b
+					
+					serie-a: first serie-a
+					serie-b: first serie-b
+					false
+				]
+				(none? ba) [
+					if trace [print "AT END OF SUBBLOCK"]
+					serie-a: last stack-a
+					serie-b: last stack-b
+					
+					remove back tail stack-a
+					remove back tail stack-b
+					false
+				]
+				
+				'default [
+					if trace [ print ">>>>"]
+					set in ctx word-a serie-a
+					set in ctx word-b serie-b
+					
+					do ctx/eval-blk
+					
+					serie-a: next serie-a
+					serie-b: next serie-b
+					false
+				]
+			]
+		]
+		
+		;print "WE SHOULD NEVER REACH HERE!"
+		result
+	]
 
 	;--------------------------
-	;-         getc()
+	;-     getc()
 	;--------------------------
 	; purpose:  low-level character input method.
 	;--------------------------
@@ -311,7 +481,7 @@ slim/register [
 
 
 	;--------------------------
-	;-         askchar()
+	;-     askchar()
 	;--------------------------
 	; purpose:  like ASK but returns after a single char, from a given list.
 	;
@@ -353,7 +523,7 @@ slim/register [
 	
 	
 	;--------------------------
-	;-         confirm()
+	;-     confirm()
 	;--------------------------
 	; purpose:  a helper around the askchar method for y/n confirmation.
 	;

@@ -430,6 +430,143 @@ slim/register [
 	]
 	
 
+
+;--------------------------
+;-     complete()
+;--------------------------
+; purpose:  alternative to compose which allows to pass through parens, with a little trick.
+;			#( ... ) is ignored  (note the # is independent of the () and is a valid issue! in R2
+
+;
+; inputs:   
+;
+; returns:  
+;
+; notes:    infinite cycle if given recursive block
+;
+; to do:    
+;
+; tests:    
+;--------------------------
+complete: funcl [
+	[THROW]
+	blk [block!]
+	/deep "compose inner blocks"
+	/only "leave result blocks as-is"
+][
+	here: none
+	
+	;vin "complete()"
+	;v?? blk
+	; note conform may be called from within a conform, so ALL data must be re-entry safe
+	token-table: copy []
+	
+	;---
+	; this is ONLY used if we are about to do a token replace in the original block given to us.
+	;
+	; we MUST COPY that block because, if we change it "in-place", we end up with a corrupted user block.
+	; 
+	; the original user's block is change by us, without his knowledge (evil).
+	;
+	; (when we do the reverse token replace, its on the result of the compose, which is always a new block.
+	;---
+	new-blk: none
+	
+	=deep?=: either deep [
+		[into rule]
+	][
+		[end skip] ; always false
+	]
+	
+	=add-token=: [
+		here: # paren! (  
+			append token-table token: to-issue rejoin [ "*_#" (length? token-table ) / 2 ] 
+			append/only token-table second here
+			change/part here token 2 ; we remove the paren!
+			here: next here
+		) :here
+	]
+	=erase-token=: [
+		here: set tk tokens (
+			;vprint ["FOUND TOKEN " tk]
+			change/only here select token-table tk ; we replace token by paren!
+		)	
+	]
+	
+	=restore-parens=: [
+		here: set tk tokens (
+			;vprint ["FOUND TOKEN " tk]
+			here: change/part here reduce [ # select token-table tk  ] 1 ; we replace token by  [ # (...) ]
+		)	
+		:here
+	]
+	
+	;----
+	; find and nullify tokenised parens
+	;----
+	rule: [
+		any [
+			=add-token=
+			| paren!
+			| =deep?= ; enters blocks when /deep is specified, we try and find ALL inner tokens and replace them
+			| skip
+		]
+	]
+	
+	;v?? token-table
+	parse blk rule
+	
+	;----
+	; compose data
+	;----
+	new-blk: any [
+		all [deep only compose/only/deep blk]
+		all [deep compose/deep blk]
+		all [only compose/only blk]
+		compose blk
+	]
+	
+	
+	;----
+	; reset token parens
+	;----
+	unless empty? token-table [
+		tokens: extract token-table 2
+		merge/between tokens '|
+		;v?? tokens
+		;v?? token-table
+		
+		rule: [
+			any [
+				=restore-parens=
+				| paren!
+				| =deep?= ; enters blocks when /deep is specified, we try and find ALL inner tokens and replace them
+				| skip
+			]
+		]
+		parse blk rule ; we have to restore the original block data to its former glory.
+		
+		rule: [
+			any [
+				=erase-token=
+				| paren!
+				| =deep?= ; enters blocks when /deep is specified, we try and find ALL inner tokens and remove them in end-user result
+				| skip
+			]
+		]
+		parse new-blk rule ; we 
+	]
+	tokens: none
+	token-table: none
+	;v?? blk
+	;v?? new-blk
+	;vout
+	new-blk
+]
+
+
+
+
 	
 	;--------------------------
 	;-     conform()
@@ -614,12 +751,20 @@ slim/register [
 		]
 		
 		until [
-			loop a [unless tail? data [
+			loop a [
+				unless any [
+					tail? data
+					all [
+						between 
+						tail? at* container step
+					]
+				][
 					container: insert/only container first data
 					unless repeat [
 						data: at* data 2 ; skip to next item in data
 					]
-			]]
+				]
+			]
 			
 			;stop merging past container
 			if tail? container [

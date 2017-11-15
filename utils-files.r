@@ -179,7 +179,7 @@ slim/register [
 		dir-part: 
 	;-----------------
 	directory-of: funcl [
-		path [file! string! none!]
+		path [file! string! none! url!]
 	][
 		all [
 			path
@@ -225,7 +225,7 @@ slim/register [
 		file-part:
 	;--------------------------
 	filename-of: funcl [
-		path [file! string! none!]
+		path [file! string! url! none! ]
 	][
 		all [
 			path
@@ -393,7 +393,7 @@ slim/register [
 	;-------------------
 	;-     is-dir?()
 	;-----
-	is-dir?: func [
+	is-dir?: dir?: func [
 		path [string! file!]
 	][
 		any [
@@ -426,8 +426,13 @@ slim/register [
 		/filter extensions [block! hash! none!] "only list files matching a list of extensions.  (must include '.')"
 		;/local list item data subpath dirpath rval
 	][
+		;vin "dir-tree()"
 		rval: copy []
 		;extensions: any [extensions []]
+		
+		;v?? i-blk
+		;v?? path
+		
 		
 		i-blk: any [i-blk []]
 		i-blk: compose [(i-blk)]
@@ -448,7 +453,22 @@ slim/register [
 		
 		dirpath: clean-path append copy rootpath path
 		
-		unless find i-blk path [
+		
+		; try to find the path part within current path
+		ignore?: false
+		foreach i-path i-blk [
+			if find path i-path [
+				vprint "==================="
+				vprint "found ignore match!"
+				v?? path 
+				v?? i-path
+				vprint "==================="
+				ignore?: true break
+			]
+		]
+		
+		
+		unless ignore? [
 			either is-dir? dirpath [
 				; list directory content
 				list: read dirpath
@@ -499,7 +519,7 @@ slim/register [
 		if block? rval [
 			rval: new-line/all  head sort rval true
 		]
-		
+;		vout
 		rval
 	]
 	

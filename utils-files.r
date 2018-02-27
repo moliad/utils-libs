@@ -1204,8 +1204,83 @@ slim/register [
 		vout
 	]
 
-	
-	
+		
+
+	;--------------------------
+	;-     move-file()
+	;--------------------------
+	; purpose:  Move files from one filepath to another
+	;
+	; inputs:   
+	;
+	; returns:  Destination path (May have been constructed from source directory or filename)
+	;
+	; notes:    Requires absolute path
+	;			if Second filepath is relative it's added to first path
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	move-file: funcl [
+		[catch]
+		source [file!]
+		destination [file!]
+	][
+		vin "move-file()"
+		unless exists? source [
+			throw make error! reduce [ rejoin ["move-file(): source doesn't exist: " source  ] ]
+		]
+		
+		unless absolute-path? source [
+			throw make error! reduce [ rejoin ["move-file(): source must be aboslute path: " source  ] ]
+		]
+		
+		unless source-file: filename-of source [
+			throw make error! reduce [ rejoin ["move-file(): source path must be a file: " source  ] ]
+		]
+		
+		
+		source-dir: directory-of source
+		if all [
+			dest-dir: directory-of destination
+			not absolute-path? destination
+		] [
+			dest-dir: complete-path join source-dir dest-dir
+			
+			unless exists? source [
+				throw make error! reduce [ rejoin ["move-file(): destination folder doesn't exist: " source  ] ]
+			]
+		]
+		
+		
+		dest-file: filename-of destination
+		unless any [
+			dest-dir dest-file
+		][
+			throw make error! reduce [ rejoin ["move-file(): destination must containt at least file or folder: " source  ] ]
+		]
+		
+		
+		dest-file: any [dest-file  source-file]
+		dest-dir: any [dest-dir   source-dir]
+		
+		throw-on-error [
+			dest-path: complete-path join dest-dir dest-file
+			source-path: complete-path source
+		]
+		
+		if dest-path = source-path [
+			throw make error! ["move-file(): source and destination must be different"]
+		]
+		
+		write/binary dest-path read/binary source-path
+		delete source-path
+		
+		vout
+		
+		dest-path
+	]
 	
 	
 ]

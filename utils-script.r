@@ -232,6 +232,47 @@ slim/register [
 
 
 	;--------------------------
+	;-         get-script-version()
+	;--------------------------
+	; purpose:  a generic func to get header info, not fast, but effective.
+	;--------------------------
+	get-script-version: funcl [
+		src [file! string! object!]
+	][
+		vin "get-script-version()"
+
+		ver: get-header-value src 'version
+		v?? ver
+		
+		ver: switch/default type?/word ver [
+			decimal! [
+				to-tuple to-string ver
+			]
+			integer! [
+				1.0.0 * ver
+			]
+			string! [
+				any [
+					all [
+						tuple? ver: attempt [to-tuple ver]
+						ver
+					]
+					0.0.0
+				]
+			]
+			tuple! [
+				ver
+			]
+		][
+			0.0.0
+		]
+		v?? ver
+		vout
+		ver
+	]
+
+
+	;--------------------------
 	;-         bump-script-version()
 	;--------------------------
 	; purpose:  automatically find and replace a version value in a header.   

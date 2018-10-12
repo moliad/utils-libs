@@ -424,7 +424,7 @@ slim/register [
 		
 		; providing a hash! will significantly improve performance
 		/filter extensions [block! hash! none!] "only list files matching a list of extensions.  (must include '.')"
-		;/local list item data subpath dirpath rval
+		/only	"Only return FILES, e.g. the Folder paths are not in the Results."
 	][
 		;vin "dir-tree()"
 		rval: copy []
@@ -474,10 +474,12 @@ slim/register [
 				list: read dirpath
 				
 				; append that path to the file list
-				either absolute [
-					append rval clean-path join rootpath path
-				][
-					append rval path
+				unless only [
+					either absolute [
+						append rval clean-path join rootpath path
+					][
+						append rval path
+					]
 				]
 				;append rval path
 				
@@ -485,13 +487,23 @@ slim/register [
 					subpath: join path item
 					
 					; list content of this new path item (files are returned directly)
-					either absolute [
-						data: dir-tree/root/absolute/ignore/filter subpath rootpath i-blk extensions
-					][
-						data: dir-tree/root/ignore/filter subpath rootpath i-blk extensions
+					data: any [
+						all [
+							absolute only
+							dir-tree/root/absolute/only/ignore/filter subpath rootpath i-blk extensions
+						]
+						all [
+							absolute
+							dir-tree/root/absolute/ignore/filter subpath rootpath i-blk extensions
+						]
+						all [
+							only
+							dir-tree/root/only/ignore/filter subpath rootpath i-blk extensions
+						]
+						dir-tree/root/ignore/filter subpath rootpath i-blk extensions
 					]
 					;if (length? data) > 0 [
-						insert tail rval data
+						append rval data
 					;]
 				]
 			][

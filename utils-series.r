@@ -417,12 +417,15 @@ slim/register [
 	;            large-ish/nested compose blocks
 	;
 	; tests:    
+	;			test [comply block sourceflow] [ [] = comply false [] ]
+	;			test [comply block sourceflow] [ error? try [ comply false none  ]]
 	;--------------------------
 	comply: func [
 		"Used with compose for conditional inclusion of data.   its like an 'IF, but returns [] (empty block!) when false, instead of none."
 		value [any-type!] "a truthy value"
 		expression [block!] "executed when value is true"
 	][
+
 		either value expression [
 			; compose will reduce this to nothing, when /only isn't used with compose.
 			[]

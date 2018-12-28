@@ -978,7 +978,7 @@ slim/register [
 	;           -if destination is a dir path, we use the source filename
 	;
 	;           -Replaces destination if it already exists.
-	;
+	;				<SMC> Added an /overwrite to fop-copy to enables this comment
 	;           -preserves file attributes
 	;
 	; to do:    
@@ -998,7 +998,7 @@ slim/register [
 				destination: join destination f
 			]
 			
-			result: (fop-copy to-local-file source   to-local-file destination )
+			result: (fop-copy/overwrite to-local-file source   to-local-file destination )
 			either (0 = result) [
 				to-error rejoin ["os-copy() OS returned failure on copy.^/" to-local-file source]
 			][

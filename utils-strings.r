@@ -72,7 +72,7 @@ slim/register [
 	;- 
 	;-----------------------------------------------------------------------------------------------------------
 	;--------------------
-	;-    zfill()
+	;-     zfill()
 	;
 	;		test-group [  zfill  string  utils-strings.r  ] [  ]
 	;			[  "0000003" = zfill 3 7     ]
@@ -102,7 +102,7 @@ slim/register [
 
 
 	;--------------------
-	;-    fill()
+	;-     fill()
 	;--------------------
 	fill: func [
 		"Fills a series to a fixed length"
@@ -136,7 +136,7 @@ slim/register [
 	
 	
 	;--------------------------
-	;-    coerce-string()
+	;-     coerce-string()
 	;--------------------------
 	; purpose:  a merge of to-string and as-string, the most memory efficient.
 	;
@@ -163,7 +163,7 @@ slim/register [
 			
 				
 	;--------------------------
-	;-    make-mem-buffer()
+	;-     make-mem-buffer()
 	;--------------------------
 	; purpose:  Create a mem cleared memory buffer for use with system functions
 	;
@@ -224,7 +224,7 @@ slim/register [
 
 
 	;--------------------------
-	;-         integer-label()
+	;-     integer-label()
 	;--------------------------
 	; purpose:  takes an integer and returns a human readable version of it.
 	;
@@ -270,7 +270,7 @@ slim/register [
 	;-----------------------------------------------------------------------------------------------------------
 
 	;--------------------------
-	;-         international-datestring()
+	;-     international-datestring()
 	;--------------------------
 	; purpose:  just a quick setup to return the prefered international date format in string! format
 	;--------------------------
@@ -284,7 +284,7 @@ slim/register [
 	
 	
 	;--------------------
-	;-    date-time()
+	;-     date-time()
 	;--------------------
 	; use this to prevent having to supply a spec all the time.
 	; the /default option of date-time sets this.

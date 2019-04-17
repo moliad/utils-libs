@@ -87,7 +87,7 @@ slim/register [
 		amount [integer!]
 		/binary
 	][
-		vin "stone/probe-binary-block()"
+		vin "utils-series/probe-binary-block()"
 		i: 0
 		words: 4
 		li: 0
@@ -134,10 +134,14 @@ slim/register [
 	; notes:    is NOT none-transparent
 	;
 	; tests:    
+	;		test-preamble 'count-string [ test-string: copy "TADAM"  ]
 	;
-	;		test-group  [count series string! utils-series.r ] [ ]
+	;		test-group  [count series string! utils-series.r ] [ count-string ]
+	;
 	;			[ 0 = count "123" "44" ]
 	;			[ 0 = count "123" "4" ]
+	;			[ 1 = count (remove/part test-string 2) "a" ]
+	;			[ 2 = count test-string "a" ]
 	;			[ 0 = count "" "4" ]
 	;			[ 1 = count "1234567890" "4"]
 	;			[ 3 = count "444" "4" ]
@@ -146,14 +150,20 @@ slim/register [
 	;			[ 1 = count/part a: "4444" "44" back back tail a ]
 	;			[ 1 = count/part a: next next "4444" "44" tail a ]
 	;			[ 0 = count "123" "" ]
+	;
 	;		end-group
 	;
 	;		test-group  [count series block! utils-series.r ] [ ]
 	;
 	;			[ 2 = count [1 2  3 4  5  3 4] [ 3 4 ] ]
 	;			[ 0 = count [1 2 3 ] [] ]
+	;          [ 2 = count [ 1 2 3 4 'd 'v 5 6] lit-word! ]
 	;
 	;		end-group
+	;
+	;		test [count series block! utils-series.r ] [ ]  [ 2 = count [1 2  3 4  5  3 4] [ 3 4 ] ]
+	;		test [count series block! utils-series.r ] [ ]  [ 0 = count [1 2 3 ] [] ]
+	;		test [count series block! utils-series.r ] [ ]  [ 2 = count [ 1 2 3 4 'd 'v 5 6] lit-word! ]
 	;
 	;--------------------------
 	count: funcl [
@@ -351,17 +361,21 @@ slim/register [
 	;
 	; notes:    
 	;
-	; tests:    [ 
-	;               extract-tags 'b [ a 1  b 2  a 1 ]       returns  [b 2]
-	;               extract-tags/all 'a [ a 1  b 2  a 1 ]   returns  [a 1 a 1]
-	;           ]
+	; tests:
+	;
+	;	test-group [extract-tags series block! utils-series.r ] []
+	;		[ [b 2] =  extract-tags 'b [ a 1  b 2  a 1 ] ]
+	;		[ [a 1 a 1] = extract-tags/all 'a [ a 1  b 2  a 1 ] ]
+	;	end-group
+	;           
+	;   test [] [] #400 'zero-divide [ 0 / 0 ]
 	;--------------------------
 	extract-tags: funcl [
 		tag 
 		blk [any-block!]
 		/all "return all tags, not just the first one"
 	][
-		vin "extract-tags()"
+		;vin "utils-series/extract-tags()"
 		
 		either all [
 			if found: find/skip blk tag 2 [
@@ -378,7 +392,7 @@ slim/register [
 			]
 		]
 		
-		vout
+		;vout
 		result
 	]	
 	
@@ -417,8 +431,8 @@ slim/register [
 	;            large-ish/nested compose blocks
 	;
 	; tests:    
-	;			test [comply block sourceflow] [ [] = comply false [] ]
-	;			test [comply block sourceflow] [ error? try [ comply false none  ]]
+	;			test [comply block! sourceflow] [ [] = comply false [] ]
+	;			test [comply block! sourceflow] [ error? try [ comply false none  ]]
 	;--------------------------
 	comply: func [
 		"Used with compose for conditional inclusion of data.   its like an 'IF, but returns [] (empty block!) when false, instead of none."
@@ -452,7 +466,7 @@ slim/register [
 	; tests:    
 	;--------------------------
 	complete: funcl [
-		[THROW]
+		[throw]
 		blk [block!]
 		/deep "compose inner blocks"
 		/only "leave result blocks as-is"
@@ -839,6 +853,95 @@ slim/register [
 	]
 
 	
+
+
+	;--------------------------
+	;-     keep()
+	;--------------------------
+	; purpose:  functional complement of take, keeping instead of taking.
+	;
+	; inputs:   
+	;
+	; returns:  what is discarded (not kept)
+	;
+	; notes:    - works its magic "in-place" 
+	;           - is none! transparent
+	;           - raise error on invalid /part
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	keep: funcl [
+		[throw]
+		series [series! none!]
+		/part amount [integer! series!]
+		/only "treat amount as a single element"
+		/last 
+	][
+		;vin "keep()"
+
+		either series? amount [
+			either same? (head series) (head amount) [
+				; provided an index into the given series
+				keep-end: amount
+			][
+				;---
+				; find ending point of what to keep
+				any [
+					all [
+						last only
+						keep-end: find/only/last series amount
+					]
+					all [
+						last
+						keep-end: find/last series amount
+					]
+					all [
+						only 
+						keep-end: find/only series amount
+					]
+					keep-end: find series amount
+				]
+			]
+			unless keep-end [
+				throw make error! "invalid /part specification"
+			]
+		][
+			amount: any [ amount 1 ]
+			;---
+			; given amount is an integer value in characters.
+			keep-end: either last [
+				skip tail series (amount * -1)
+			][
+				skip series amount
+			]
+		]
+		
+		;---
+		; copy what we discard, to return it 
+		discarded: either last [
+			; everything is reversed we discard from head.
+			copy/part series keep-end
+		][
+			; we keep from head
+			copy keep-end
+		]
+		
+		;---
+		; discard data we're not keeping
+		either last [
+			remove/part series keep-end
+		][
+			clear keep-end
+		]
+		
+		
+		;vout
+		first reduce [discarded discarded: keep-end: amount: series: none]
+	]
+
+
 	
 ]
 

@@ -304,11 +304,16 @@ slim/register [
 	extension-of: 
 	suffix-of: funcl [
 		path [string! file! none!]
+		/dot "return the dot in the filename"
 	][
 		all [
 			path
 			file: filename-of path  ; 'FILENAME-OF does a copy, so we don't have to.
-			find/last/tail file "." ; returns none when not found.
+			either dot [
+				find/last file "." ; returns none when not found.
+			][
+				find/last/tail file "." ; returns none when not found.
+			]
 		]
 			
 	]

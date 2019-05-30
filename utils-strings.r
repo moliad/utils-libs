@@ -233,6 +233,7 @@ slim/register [
 	integer-label: funcl [
 		value [integer!]
 		/of type "a string to append to the label"
+		/precision magnitute [decimal!]
 		/default deftype "string to use when no multiplier is given."
 	][
 		;vin "integer-label()"
@@ -240,18 +241,21 @@ slim/register [
 		deftype: any [ deftype type ]
 		case [
 			value > 1'000'000'000 [
+				magnitute: any [magnitute 0.01]
 				value: value / 1'000'000'000
-				value: round/to value 0.01
+				value: round/to value magnitute
 				rejoin ["" value "G" type]
 			]
 			value > 1'000'000 [
+				magnitute: any [magnitute 0.1]
 				value: value / 1'000'000
-				value: round/to value 0.1
+				value: round/to value magnitute
 				rejoin ["" value "M" type]
 			]
 			value > 1000 [
+				magnitute: any [magnitute 0.1]
 				value: value / 1000
-				value: round/to value 0.1
+				value: round/to value magnitute
 				rejoin ["" value "K" type]
 			]
 			'default [

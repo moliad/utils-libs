@@ -162,6 +162,10 @@ slim/register [
 		]
 	]
 
+
+
+
+
 	;-                                                                                                         .
 	;-----------------------------------------------------------------------------------------------------------
 	;- 
@@ -1194,6 +1198,7 @@ slim/register [
 		]
 	]
 	
+	
 	;--------------------------
 	;-         	utf-8-to-iso-8859()
 	;--------------------------
@@ -1553,58 +1558,56 @@ slim/register [
 	;
 	; tests:    
 	;--------------------------
-	utf-8-to-win-1252: make function! [
+	utf-8-to-win-1252: funcl [
 		{
-		Converts a win-1252 encoded string to UTF-8.
+		Converts a utf8 encoded string to win-1252
 		This is a lossy conversion:
 		Characters that cannot be converted are changed to "?"
 		(That includes any invalid UTF-8 characters in the input)
 		}
 		input-string [string!]
-		/local
-		extra-rules
-		trans-table
 	][
 		;; Define the additional rules to be applied before the default rules
-		extra-rules: [
-			;{^(E2)^(82)^(A0)}     (insert tail output-string #"^(80)") | ; error euro.
-			{^(E2)^(82)^(AC)}     (insert tail output-string #"^(80)") | 
-			{^(E2)^(80)^(9A)}     (insert tail output-string #"^(82)") |
-			{^(C6)^(92)}          (insert tail output-string #"^(83)") |
-			{^(E2)^(80)^(9E)}     (insert tail output-string #"^(84)") |
-			{^(E2)^(80)^(A6)}     (insert tail output-string #"^(85)") |
-			{^(E2)^(80)^(A0)}     (insert tail output-string #"^(86)") |
-			{^(E2)^(80)^(A1)}     (insert tail output-string #"^(87)") |
-			{^(CB)^(86)}          (insert tail output-string #"^(88)") |
-			{^(E2)^(80)^(B0)}     (insert tail output-string #"^(89)") |
-			{^(C5)^(A0)}          (insert tail output-string #"^(8A)") |
-			{^(E2)^(80)^(B9)}     (insert tail output-string #"^(8B)") |
-			{^(C5)^(92)}          (insert tail output-string #"^(8C)") |
-			{^(C5)^(BD)}          (insert tail output-string #"^(8E)") |
-			{^(E2)^(80)^(98)}     (insert tail output-string #"^(91)") |
-			;{^(E2)^(80)^(99)}     (insert tail output-string #"^(92)") |
-			{^(E2)^(80)^(9C)}     (insert tail output-string #"^(93)") |
-			{^(E2)^(80)^(9D)}     (insert tail output-string #"^(94)") |
-			{^(E2)^(80)^(A2)}     (insert tail output-string #"^(95)") |
-			{^(E2)^(80)^(93)}     (insert tail output-string #"^(96)") |
-			{^(E2)^(84)^(84)}     (insert tail output-string #"^(97)") |
-			{^(CB)^(96)}          (insert tail output-string #"^(98)") |
-			{^(E2)^(84)^(A2)}     (insert tail output-string #"^(99)") |
-			{^(C5)^(A1)}          (insert tail output-string #"^(9A)") |
-			{^(E2)^(80)^(BA)}     (insert tail output-string #"^(9B)") |
-			;{^(C5)^(93)}          (insert tail output-string #"^(9C)") |
-			{^(C5)^(BE)}          (insert tail output-string #"^(9E)") |
-			{^(C5)^(B8)}          (insert tail output-string #"^(9F)") |
-			{^(C3)^(27)} 		 (insert tail output-string #"^(F4)") |
-			{^(C2)^(27)} 		 (insert tail output-string rejoin [ #"^(27)" ] ) |   ;This replaces a utf-8 quote sequence with a quote.
-			{^(C5)^(93)} 		 (insert tail output-string rejoin [ #"^(6F)" #"^(65)"] ) |
-			
-			
-			{^(E2)^(80)^(99)} 	 (insert tail output-string #"^(27)" )
-		]
-		
-		utf-8-to-iso-8859/addl-rules input-string extra-rules
-		
+;		extra-rules: [
+;			;{^(E2)^(82)^(A0)}     (insert tail output-string #"^(80)") | ; error euro.
+;			{^(E2)^(82)^(AC)}     (insert tail output-string #"^(80)") | 
+;			{^(E2)^(80)^(9A)}     (insert tail output-string #"^(82)") |
+;			{^(C6)^(92)}          (insert tail output-string #"^(83)") |
+;			{^(E2)^(80)^(9E)}     (insert tail output-string #"^(84)") |
+;			{^(E2)^(80)^(A6)}     (insert tail output-string #"^(85)") |
+;			{^(E2)^(80)^(A0)}     (insert tail output-string #"^(86)") |
+;			{^(E2)^(80)^(A1)}     (insert tail output-string #"^(87)") |
+;			{^(CB)^(86)}          (insert tail output-string #"^(88)") |
+;			{^(E2)^(80)^(B0)}     (insert tail output-string #"^(89)") |
+;			{^(C5)^(A0)}          (insert tail output-string #"^(8A)") |
+;			{^(E2)^(80)^(B9)}     (insert tail output-string #"^(8B)") |
+;			{^(C5)^(92)}          (insert tail output-string #"^(8C)") |
+;			{^(C5)^(BD)}          (insert tail output-string #"^(8E)") |
+;			{^(E2)^(80)^(98)}     (insert tail output-string #"^(91)") |
+;			;{^(E2)^(80)^(99)}     (insert tail output-string #"^(92)") |
+;			{^(E2)^(80)^(9C)}     (insert tail output-string #"^(93)") |
+;			{^(E2)^(80)^(9D)}     (insert tail output-string #"^(94)") |
+;			{^(E2)^(80)^(A2)}     (insert tail output-string #"^(95)") |
+;			{^(E2)^(80)^(93)}     (insert tail output-string #"^(96)") |
+;			{^(E2)^(84)^(84)}     (insert tail output-string #"^(97)") |
+;			{^(CB)^(96)}          (insert tail output-string #"^(98)") |
+;			{^(E2)^(84)^(A2)}     (insert tail output-string #"^(99)") |
+;			{^(C5)^(A1)}          (insert tail output-string #"^(9A)") |
+;			{^(E2)^(80)^(BA)}     (insert tail output-string #"^(9B)") |
+;			;{^(C5)^(93)}          (insert tail output-string #"^(9C)") |
+;			{^(C5)^(BE)}          (insert tail output-string #"^(9E)") |
+;			{^(C5)^(B8)}          (insert tail output-string #"^(9F)") |
+;			{^(C3)^(27)} 		 (insert tail output-string #"^(F4)") |
+;			{^(C2)^(27)} 		 (insert tail output-string rejoin [ #"^(27)" ] ) |   ;This replaces a utf-8 quote sequence with a quote.
+;			{^(C5)^(93)} 		 (insert tail output-string rejoin [ #"^(6F)" #"^(65)"] ) |
+;			
+;			
+;			{^(E2)^(80)^(99)} 	 (insert tail output-string #"^(27)" )
+;		]
+;		
+;		utf-8-to-iso-8859/addl-rules input-string extra-rules
+;		
+		utf8-win1252/transcode input-string
 	]
 	
 	;--------------------------
@@ -1679,6 +1682,206 @@ slim/register [
 		iso-8859-to-utf-8/addl-rules input-string extra-rules
 		
 	]
+	
+	
+	
+	;-                                                                                                       .
+	;-----------------------------------------------------------------------------------------------------------
+	;
+	;- NEW RULE MECHANISM
+	;
+	;-----------------------------------------------------------------------------------------------------------
+	; most rules are still using on-fly rule creation and parsing 
+	; which accumulates rules over and over ... is a major bug.	
+	;
+	; these new rules bake the whole rule into separate contexts, and does no dynamic
+	; rule building.
+	;
+	; faster, no memory leak
+	;---	
+	
+	;--------------------------
+	;-     u2i-ctx [ . . . ]
+	;
+	;  the core context for all utf8-to-xxxx transcoding.
+	;--------------------------
+	u2i-ctx: context [
+		;--------------------------
+		;-         result-string:
+		;
+		; stores the result of the xlation, always reset.
+		;--------------------------
+		result-string: ""
+		
+		;--------------------------
+		;-         transfer:
+		;
+		;--------------------------
+		transfer: none
+
+		;--------------------------
+		;-         character sequences
+		;--------------------------
+		xA0-xBF: charset [#"^(A0)" - #"^(BF)"]
+		x80-xBF: charset [#"^(80)" - #"^(BF)"]
+		
+		C2A0-C2BF: [#"^(C2)" xA0-xBF]
+		C380-C3BF: [#"^(C3)" x80-xBF]
+		
+		;--------------------------
+		;-         sub-rules
+		;--------------------------
+		ascii-rule: [
+			copy transfer [some ascii] (
+				insert tail result-string transfer
+			)
+		]
+		
+		C2A0-C2BF-rule: [
+			;; characters in the range C2A0-C2BF relate to A0-BF
+			copy transfer C2A0-C2BF (insert tail result-string second transfer)
+		]
+		
+		C380-C3BF-rule: [
+			;; characters in the range C380-C3BF relate to C0-FF
+			copy transfer C380-C3BF (
+				insert tail result-string #"^(40)" or second transfer 
+			)
+		]
+		
+		=fail=: [end skip] ; always fails... fast
+		=extras=: =fail=
+		
+		;--------------------------
+		;-         =main-rule=:
+		;
+		; main rule applying all rules of the transcoder.
+		;--------------------------
+		=main-rule=: [
+			(result-string: copy "")
+			any [
+				  ascii-rule
+				| =extras=
+				| C2A0-C2BF-rule
+				| C380-C3BF-rule
+				| [
+					[a-utf-8-two-byte | a-utf-8-three-byte | a-utf-8-four-byte] (
+						insert tail result-string replacement-char
+					)
+				]
+				| skip (insert tail result-string replacement-char)
+			]
+		]
+		
+		
+		;--------------------------
+		;-         transcode()
+		;--------------------------
+		; purpose:  runs the main rule on a given binary! or string! type.
+		;
+		; inputs:   
+		;
+		; returns:  
+		;
+		; notes:    the returned string is always a new string.
+		;
+		; to do:    
+		;
+		; tests:    
+		;--------------------------
+		transcode: funcl [
+			data [string! binary!]
+		][
+			vin "transcode()"
+			parse/all data =main-rule=
+			vout
+			result-string
+		]
+		
+	]
+	
+
+	;--------------------------
+	;-     build-transcoder()
+	;--------------------------
+	; purpose:  returns a parse rule able to converts one encoding to another using a static parse rule
+	;
+	; inputs:   the context to clone, and extra rules if any.
+	;
+	; returns:  a stand-alone transcoder context, use its transcode function to convert a text.
+	;
+	; notes:    - each encoder is fully independent, fully deep-copied.
+	;           - we also deep copy the given extra rules
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	build-transcoder: funcl [
+		base [object!]  "Reference transcoder to use."
+		extras [block!] "These rules are extras to add to the base transcoder."
+	][
+		vin "build-transcoder()"
+		
+		ctx: make base [
+			=extras=: copy/deep extras
+		]
+		; we now set the rule we linked
+		bind ctx/=extras= ctx
+		vout
+		ctx
+	]
+
+	;--------------------------
+	;-     utf8-to-win1252-transcoder:
+	;
+	; stores the run-time generated rule which does the conversion
+	;--------------------------
+	utf8-win1252: build-transcoder u2i-ctx [
+		;{^(E2)^(82)^(A0)}     (insert tail result-string #"^(80)") | ; error euro.
+		{^(E2)^(82)^(AC)}     (insert tail result-string #"^(80)")  
+		| {^(E2)^(80)^(9A)}     (insert tail result-string #"^(82)")
+		| {^(C6)^(92)}          (insert tail result-string #"^(83)") 
+		| {^(E2)^(80)^(9E)}     (insert tail result-string #"^(84)") 
+		| {^(E2)^(80)^(A6)}     (insert tail result-string #"^(85)") 
+		| {^(E2)^(80)^(A0)}     (insert tail result-string #"^(86)") 
+		| {^(E2)^(80)^(A1)}     (insert tail result-string #"^(87)") 
+		| {^(CB)^(86)}          (insert tail result-string #"^(88)") 
+		| {^(E2)^(80)^(B0)}     (insert tail result-string #"^(89)") 
+		| {^(C5)^(A0)}          (insert tail result-string #"^(8A)") 
+		| {^(E2)^(80)^(B9)}     (insert tail result-string #"^(8B)") 
+		| {^(C5)^(92)}          (insert tail result-string #"^(8C)") 
+		| {^(C5)^(BD)}          (insert tail result-string #"^(8E)") 
+		| {^(E2)^(80)^(98)}     (insert tail result-string #"^(91)") 
+	 	;| {^(E2)^(80)^(99)}     (insert tail result-string #"^(92)") 
+		| {^(E2)^(80)^(9C)}     (insert tail result-string #"^(93)") 
+		| {^(E2)^(80)^(9D)}     (insert tail result-string #"^(94)") 
+		| {^(E2)^(80)^(A2)}     (insert tail result-string #"^(95)") 
+		| {^(E2)^(80)^(93)}     (insert tail result-string #"^(96)") 
+		| {^(E2)^(84)^(84)}     (insert tail result-string #"^(97)") 
+		| {^(CB)^(96)}          (insert tail result-string #"^(98)") 
+		| {^(E2)^(84)^(A2)}     (insert tail result-string #"^(99)") 
+		| {^(C5)^(A1)}          (insert tail result-string #"^(9A)") 
+		| {^(E2)^(80)^(BA)}     (insert tail result-string #"^(9B)") 
+		;| {^(C5)^(93)}          (insert tail result-string #"^(9C)") 
+		| {^(C5)^(BE)}          (insert tail result-string #"^(9E)") 
+		| {^(C5)^(B8)}          (insert tail result-string #"^(9F)") 
+		| {^(C3)^(27)} 		 (insert tail result-string #"^(F4)") 
+		| {^(C2)^(27)} 		 (insert tail result-string rejoin [ #"^(27)" ] )    ;This replaces a utf-8 quote sequence with a quote.
+		| {^(C5)^(93)} 		 (insert tail result-string rejoin [ #"^(6F)" #"^(65)"] ) 
+		
+		| {^(E2)^(80)^(99)} 	 (insert tail result-string #"^(27)" )
+	]
+	
+
+	
+	
+	
+	
+	
+	
+	
+	
 	
 ]
 

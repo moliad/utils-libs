@@ -398,7 +398,7 @@ slim/register [
 	;-------------------
 	;-     is-dir?()
 	;-----
-	is-dir?: dir?: func [
+	is-dir?: func [
 		path [string! file!]
 	][
 		any [
@@ -530,6 +530,9 @@ slim/register [
 				][
 					rval: [] ; will insert nothing
 				]
+;				unless block? rval [
+;					vprint ["match: "  rval ]
+;				]
 			]
 		]
 		

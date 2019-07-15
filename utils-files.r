@@ -1024,7 +1024,7 @@ slim/register [
 	;
 	; inputs:   
 	;
-	; returns:  
+	; returns:  always returns true, all negative outcomes generate errors... using attempt you can have a conditional value.
 	;
 	; notes:    - if the to path is a folder, it will attempt to put it within that folder.
 	;           - if it's a file path, it will rename the from path to the given path.
@@ -1222,6 +1222,7 @@ slim/register [
 		]
 		
 		vout
+		true
 	]
 
 		

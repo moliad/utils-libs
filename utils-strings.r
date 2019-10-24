@@ -160,7 +160,36 @@ slim/register [
 		vout
 		data
 	]
-			
+	
+	
+	;--------------------------
+	;-     mold-decimal()
+	;--------------------------
+	; purpose:  always returns a normal decimal string version of a decimal! value, not scientific notation.
+	;
+	; inputs:   
+	;
+	; returns:  
+	;
+	; notes:    uses time! to do work.
+	;
+	; to do:    
+	;
+	; tests:    
+	;--------------------------
+	mold-decimal: funcl [
+		value [decimal!]
+	][
+		vin "mold-decimal()"
+		
+		value: to-time value
+		
+		val: rejoin [to-integer value/second skip mold value 7]
+	
+		vout
+		val
+	]
+	
 				
 	;--------------------------
 	;-     make-mem-buffer()

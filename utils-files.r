@@ -1267,7 +1267,7 @@ slim/register [
 			dest-dir: directory-of destination
 			not absolute-path? destination
 		] [
-			dest-dir: complete-path join source-dir dest-dir
+			dest-dir: clean-path join source-dir dest-dir
 			
 			unless exists? source [
 				throw make error! reduce [ rejoin ["move-file(): destination folder doesn't exist: " source  ] ]
@@ -1287,8 +1287,8 @@ slim/register [
 		dest-dir: any [dest-dir   source-dir]
 		
 		throw-on-error [
-			dest-path: complete-path join dest-dir dest-file
-			source-path: complete-path source
+			dest-path: clean-path join dest-dir dest-file
+			source-path: clean-path source
 		]
 		
 		if dest-path = source-path [

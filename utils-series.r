@@ -419,7 +419,7 @@ slim/register [
 	;           ]
 	;
 	;
-	; inputs:   
+	; inputs:   /only with only compose block, instead of DOing it
 	;
 	; returns:  
 	;
@@ -438,9 +438,15 @@ slim/register [
 		"Used with compose for conditional inclusion of data.   its like an 'IF, but returns [] (empty block!) when false, instead of none."
 		value [any-type!] "a truthy value"
 		expression [block!] "executed when value is true"
+		/only "Compose given block and returns it, no need to compose in a compose"
 	][
-
-		either value expression [
+		either value [
+			either only [
+				compose expression
+			][
+				do expression
+			]
+		][
 			; compose will reduce this to nothing, when /only isn't used with compose.
 			[]
 		]
@@ -459,7 +465,8 @@ slim/register [
 	;
 	; returns:  
 	;
-	; notes:    infinite cycle if given recursive block
+	; notes:    - infinite cycle if given recursive block
+	;           - a sequence of # will be stripped one at a time. ex [ ##(1) becomes #(1)]
 	;
 	; to do:    
 	;

@@ -1544,7 +1544,7 @@ slim/register [
 	]
 	
 	;--------------------------
-	;-         	utf-8-to-win-1252()
+	;-         	utf8-to-win-1252()
 	;--------------------------
 	; purpose:  
 	;
@@ -1558,7 +1558,7 @@ slim/register [
 	;
 	; tests:    
 	;--------------------------
-	utf-8-to-win-1252: funcl [
+	utf-8-to-win-1252: utf8-to-win1252: funcl [
 		{
 		Converts a utf8 encoded string to win-1252
 		This is a lossy conversion:

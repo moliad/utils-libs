@@ -1700,18 +1700,44 @@ slim/register [
 	; faster, no memory leak
 	;---	
 	
+	
 	;--------------------------
-	;-     u2i-ctx [ . . . ]
+	;-     transcoder-ctx:
 	;
-	;  the core context for all utf8-to-xxxx transcoding.
 	;--------------------------
-	u2i-ctx: context [
+	transcoder-ctx: context [
 		;--------------------------
 		;-         result-string:
 		;
 		; stores the result of the xlation, always reset.
 		;--------------------------
 		result-string: ""
+
+		;--------------------------
+		;-         .result-string:
+		;
+		; new name, deprecates the old name in any new transcoder code.
+		;--------------------------
+		.result-string: ""
+
+		
+		;--------------------------
+		;-         .output-code:
+		;
+		; when a rule needs to compute a result or is setup from within a paren in the parse rule,
+		; assign it to .output-code
+		;
+		; it will then be used later, at the end of the transcode's main rule.
+		;--------------------------
+		.output-code: none
+		
+		;--------------------------
+		;-         .matched:
+		;
+		;--------------------------
+		.matched: none
+		
+		
 		
 		;--------------------------
 		;-         transfer:
@@ -1720,59 +1746,26 @@ slim/register [
 		transfer: none
 
 		;--------------------------
-		;-         character sequences
+		;-         =fail=:
+		;
 		;--------------------------
-		xA0-xBF: charset [#"^(A0)" - #"^(BF)"]
-		x80-xBF: charset [#"^(80)" - #"^(BF)"]
-		
-		C2A0-C2BF: [#"^(C2)" xA0-xBF]
-		C380-C3BF: [#"^(C3)" x80-xBF]
-		
-		;--------------------------
-		;-         sub-rules
-		;--------------------------
-		ascii-rule: [
-			copy transfer [some ascii] (
-				insert tail result-string transfer
-			)
-		]
-		
-		C2A0-C2BF-rule: [
-			;; characters in the range C2A0-C2BF relate to A0-BF
-			copy transfer C2A0-C2BF (insert tail result-string second transfer)
-		]
-		
-		C380-C3BF-rule: [
-			;; characters in the range C380-C3BF relate to C0-FF
-			copy transfer C380-C3BF (
-				insert tail result-string #"^(40)" or second transfer 
-			)
-		]
-		
 		=fail=: [end skip] ; always fails... fast
+		
+		;--------------------------
+		;-         =extras=:
+		;
+		; no extras by default
+		;--------------------------
 		=extras=: =fail=
 		
 		;--------------------------
 		;-         =main-rule=:
 		;
-		; main rule applying all rules of the transcoder.
 		;--------------------------
 		=main-rule=: [
 			(result-string: copy "")
-			any [
-				  ascii-rule
-				| =extras=
-				| C2A0-C2BF-rule
-				| C380-C3BF-rule
-				| [
-					[a-utf-8-two-byte | a-utf-8-three-byte | a-utf-8-four-byte] (
-						insert tail result-string replacement-char
-					)
-				]
-				| skip (insert tail result-string replacement-char)
-			]
+			some [skip]
 		]
-		
 		
 		;--------------------------
 		;-         transcode()
@@ -1791,13 +1784,148 @@ slim/register [
 		;--------------------------
 		transcode: funcl [
 			data [string! binary!]
+			/extern .result-string
 		][
 			vin "transcode()"
-			parse/all data =main-rule=
+			.result-string: copy ""
+			parse/all/case data =main-rule=
 			vout
-			result-string
+			.result-string
+		]	
+	]
+	
+	;--------------------------
+	;-     u2i-ctx [...]
+	;
+	;  the core context for all utf8-to-isoxxxx transcoding.
+	;--------------------------
+	u2i-ctx: make transcoder-ctx [
+
+		;--------------------------
+		;-         character sequences
+		;--------------------------
+		xA0-xBF: charset [#"^(A0)" - #"^(BF)"]
+		x80-xBF: charset [#"^(80)" - #"^(BF)"]
+		
+		C2A0-C2BF: [#"^(C2)" xA0-xBF]
+		C380-C3BF: [#"^(C3)" x80-xBF]
+		
+		;--------------------------
+		;-         sub-rules
+		;--------------------------
+		ascii-rule: [
+			copy .matched [some ascii] (
+				;vprint "ascii-rule"
+				.output-code: .matched
+			)
 		]
 		
+		C2A0-C2BF-rule: [
+			;; characters in the range C2A0-C2BF relate to A0-BF
+			copy .matched C2A0-C2BF (
+				;vprint "C2A0-C2BF-rule"
+				.output-code:  second .matched
+			)
+		]
+		
+		C380-C3BF-rule: [
+			;; characters in the range C380-C3BF relate to C0-FF
+			copy .matched C380-C3BF (
+				;vprint "C380-C3BF-rule"
+				.output-code: ( #"^(40)" or second .matched)
+			)
+		]
+		
+		;--------------------------
+		;-         =main-rule=:
+		;
+		; main rule applying all rules of the transcoder.
+		;--------------------------
+		=main-rule=: [
+			(.result-string: copy "")
+			any [
+					[
+					  =extras= ;(vprint"extras")
+					| ascii-rule
+					| C2A0-C2BF-rule
+					| C380-C3BF-rule
+
+					| [
+						copy .matched [
+							  a-utf-8-two-byte     ;(vprint "two byte rule")
+							| a-utf-8-three-byte   ;(vprint "three byte rule")
+							| a-utf-8-four-byte    ;(vprint "four byte rule")
+						]
+						(
+							.output-code: replacement-char
+						)
+					]
+					| copy .matched skip (
+						;vprint "SKIP RULE"
+						.output-code: replacement-char
+					)
+				]
+				(
+					;vprint "u2i-ctx"
+					;v?? .matched
+					;v?? .output-code
+					;vprint ""
+					
+					append .result-string .output-code
+				)
+			]
+		]
+	]
+
+	;--------------------------
+	;-     i2u-ctx [...]
+	;
+	;  the core context for all iso-xxxx to utf8 transcoding.
+	;--------------------------
+	i2u-ctx: make transcoder-ctx [
+		
+		;; sub-rules
+		=ascii=: [
+			copy .output-code [some ascii]
+		]
+		
+		=80-BF=: [
+			;; characters in the range 80-BF relate to C280-C2BF
+			copy .matched x80-xBF (
+				.output-code: rejoin ["" #"^(C2)" (.matched)]
+			)
+		]
+		
+		=C0-FF=: [
+			;; characters in the range C0-FF relate to C380-C3BF
+			copy .matched xC0-xFF (
+				.output-code: rejoin [
+					"" #"^(C3)" (#"^(40)" xor to char! .matched)
+				]
+			)
+		]
+		=main-rule=: [
+			any [
+				[
+					  =extras=
+					| =ascii=
+					| =80-BF=
+					| =C0-FF=
+				]
+				(
+					;----
+					;  when something else than =ascii= is matched...
+					if .matched [
+						;?? .matched
+						;?? .output-code
+;						.bin-code: as-binary .output-code
+					]
+					
+					.matched: none
+					append .result-string .output-code
+				)
+			]
+		]
 	]
 	
 
@@ -1820,14 +1948,33 @@ slim/register [
 	build-transcoder: funcl [
 		base [object!]  "Reference transcoder to use."
 		extras [block!] "These rules are extras to add to the base transcoder."
+		/table "the given extras is a simple mapping table, create a rule based on the table."
 	][
 		vin "build-transcoder()"
+		if table [
+			blk: copy []
+			foreach [src res] extras [
+				repend blk [
+					'|  src to-paren compose [.output-code: (res)]
+				]
+			]
+			
+			;---
+			; remove the first | character from the rule. 
+			; this is to prevent a rule with nothing to match ... will short-circuit all other rules.)
+			remove blk
+			extras: blk
+			;?? extras
+		]
+		
 		
 		ctx: make base [
 			=extras=: copy/deep extras
 		]
+		
 		; we now set the rule we linked
-		bind ctx/=extras= ctx
+		bind ctx/=extras= ctx 
+		bind ctx/=main-rule= ctx
 		vout
 		ctx
 	]
@@ -1837,51 +1984,77 @@ slim/register [
 	;
 	; stores the run-time generated rule which does the conversion
 	;--------------------------
-	utf8-win1252: build-transcoder u2i-ctx [
-		;{^(E2)^(82)^(A0)}     (insert tail result-string #"^(80)") | ; error euro.
-		{^(E2)^(82)^(AC)}     (insert tail result-string #"^(80)")  
-		| {^(E2)^(80)^(9A)}     (insert tail result-string #"^(82)")
-		| {^(C6)^(92)}          (insert tail result-string #"^(83)") 
-		| {^(E2)^(80)^(9E)}     (insert tail result-string #"^(84)") 
-		| {^(E2)^(80)^(A6)}     (insert tail result-string #"^(85)") 
-		| {^(E2)^(80)^(A0)}     (insert tail result-string #"^(86)") 
-		| {^(E2)^(80)^(A1)}     (insert tail result-string #"^(87)") 
-		| {^(CB)^(86)}          (insert tail result-string #"^(88)") 
-		| {^(E2)^(80)^(B0)}     (insert tail result-string #"^(89)") 
-		| {^(C5)^(A0)}          (insert tail result-string #"^(8A)") 
-		| {^(E2)^(80)^(B9)}     (insert tail result-string #"^(8B)") 
-		| {^(C5)^(92)}          (insert tail result-string #"^(8C)") 
-		| {^(C5)^(BD)}          (insert tail result-string #"^(8E)") 
-		| {^(E2)^(80)^(98)}     (insert tail result-string #"^(91)") 
-	 	;| {^(E2)^(80)^(99)}     (insert tail result-string #"^(92)") 
-		| {^(E2)^(80)^(9C)}     (insert tail result-string #"^(93)") 
-		| {^(E2)^(80)^(9D)}     (insert tail result-string #"^(94)") 
-		| {^(E2)^(80)^(A2)}     (insert tail result-string #"^(95)") 
-		| {^(E2)^(80)^(93)}     (insert tail result-string #"^(96)") 
-		| {^(E2)^(84)^(84)}     (insert tail result-string #"^(97)") 
-		| {^(CB)^(96)}          (insert tail result-string #"^(98)") 
-		| {^(E2)^(84)^(A2)}     (insert tail result-string #"^(99)") 
-		| {^(C5)^(A1)}          (insert tail result-string #"^(9A)") 
-		| {^(E2)^(80)^(BA)}     (insert tail result-string #"^(9B)") 
-		;| {^(C5)^(93)}          (insert tail result-string #"^(9C)") 
-		| {^(C5)^(BE)}          (insert tail result-string #"^(9E)") 
-		| {^(C5)^(B8)}          (insert tail result-string #"^(9F)") 
-		| {^(C3)^(27)} 		 (insert tail result-string #"^(F4)") 
-		| {^(C2)^(27)} 		 (insert tail result-string rejoin [ #"^(27)" ] )    ;This replaces a utf-8 quote sequence with a quote.
-		| {^(C5)^(93)} 		 (insert tail result-string rejoin [ #"^(6F)" #"^(65)"] ) 
-		
-		| {^(E2)^(80)^(99)} 	 (insert tail result-string #"^(27)" )
+	utf8-win1252: build-transcoder/table u2i-ctx compose [
+		;{^(E2)^(82)^(A0)}    #"^(80)" ; | ; error euro.
+		{^(E2)^(82)^(AC)}     #"^(80)"
+		{^(E2)^(80)^(9A)}     #"^(82)"
+		{^(C6)^(92)}          #"^(83)"
+		{^(E2)^(80)^(9E)}     #"^(84)"
+		{^(E2)^(80)^(A6)}     #"^(85)"
+		{^(E2)^(80)^(A0)}     #"^(86)"
+		{^(E2)^(80)^(A1)}     #"^(87)"
+		{^(CB)^(86)}          #"^(88)"
+		{^(E2)^(80)^(B0)}     #"^(89)"
+		{^(C5)^(A0)}          #"^(8A)"
+		{^(E2)^(80)^(B9)}     #"^(8B)"
+		{^(C5)^(92)}          #"^(8C)"
+		{^(C5)^(BD)}          #"^(8E)"
+		{^(E2)^(80)^(98)}     #"^(91)"
+	 	;{^(E2)^(80)^(99)}    #"^(92)"
+		{^(E2)^(80)^(9C)}     #"^(93)"
+		{^(E2)^(80)^(9D)}     #"^(94)"
+		{^(E2)^(80)^(A2)}     #"^(95)"
+		{^(E2)^(80)^(93)}     #"^(96)"
+		{^(E2)^(84)^(84)}     #"^(97)"
+		{^(CB)^(96)}          #"^(98)"
+		{^(E2)^(84)^(A2)}     #"^(99)"
+		{^(C5)^(A1)}          #"^(9A)"
+		{^(E2)^(80)^(BA)}     #"^(9B)"
+		;{^(C5)^(93)}         #"^(9C)"
+		{^(C5)^(BE)}          #"^(9E)"
+		{^(C5)^(B8)}          #"^(9F)"
+		{^(C3)^(27)} 		  #"^(F4)"
+		{^(C2)^(27)} 		  #"^(27)"     ;This replaces a utf-8 quote sequence with a quote.
+		{^(C5)^(93)} 		  {^(6F)^(65)}
+		{^(E2)^(80)^(99)} 	  #"^(27)"
 	]
 	
-
 	
-	
-	
-	
-	
-	
-	
-	
+	win1252-utf8: build-transcoder/table i2u-ctx compose [
+		;"^(80)" {^(E2)^(82)^(A0)} ; error ... 
+		"^(80)" {^(E2)^(82)^(AC)} ; error ... 
+		"^(81)" (replacement-char)
+		"^(82)" {^(E2)^(80)^(9A)}
+		"^(83)" {^(C6)^(92)}
+		"^(84)" {^(E2)^(80)^(9E)}
+		"^(85)" {^(E2)^(80)^(A6)}
+		"^(86)" {^(E2)^(80)^(A0)}
+		"^(87)" {^(E2)^(80)^(A1)}
+		"^(88)" {^(CB)^(86)}
+		"^(89)" {^(E2)^(80)^(B0)}
+		"^(8A)" {^(C5)^(A0)}
+		"^(8B)" {^(E2)^(80)^(B9)}
+		"^(8C)" {^(C5)^(92)}
+		"^(8D)" (replacement-char)
+		"^(8E)" {^(C5)^(BD)}
+		"^(8F)" (replacement-char)
+		"^(90)" (replacement-char)
+		"^(91)" {^(E2)^(80)^(98)}
+		"^(92)" {^(E2)^(80)^(99)}
+		"^(93)" {^(E2)^(80)^(9C)}
+		"^(94)" {^(E2)^(80)^(9D)}
+		"^(95)" {^(E2)^(80)^(A2)}
+		"^(96)" {^(E2)^(80)^(93)}
+		"^(97)" {^(E2)^(84)^(84)}
+		"^(98)" {^(CB)^(96)}
+		"^(99)" {^(E2)^(84)^(A2)}
+		"^(9A)" {^(C5)^(A1)}
+		"^(9B)" {^(E2)^(80)^(BA)}
+		"^(9C)" {^(C5)^(93)}
+		"^(9D)" (replacement-char)
+		"^(9E)" {^(C5)^(BE)}
+		"^(9F)" {^(C5)^(B8)}
+	]
 	
 ]
 
